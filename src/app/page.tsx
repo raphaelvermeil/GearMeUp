@@ -29,7 +29,7 @@ export default function Home() {
         </div>
       </div>
       <Link href="/sms">
-      <button>sms page</button>
+      <button>sms page salut noah</button>
       </Link>
       <Link href="/test">
       <button>sms page 3</button>
