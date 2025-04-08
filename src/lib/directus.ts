@@ -9,6 +9,7 @@ import {
   updateItem,
   deleteItem,
   readAssetRaw,
+  createUser,
 } from "@directus/sdk";
 
 const DIRECTUS_URL = "https://creative-blini-b15912.netlify.app";
@@ -26,6 +27,11 @@ export interface DirectusFile {
   url: string;
 }
 
+export interface DirectusClient {
+  id: string;
+  user_id: DirectusUser;
+}
+
 export interface DirectusGearListing {
   id: string;
   title: string;
@@ -34,7 +40,7 @@ export interface DirectusGearListing {
   condition: string;
   location: string;
   category: string;
-  user_id: DirectusUser;
+  client_id: DirectusClient;
   gear_images: Array<{
     id: string;
     gear_listings_id: string;
@@ -43,8 +49,9 @@ export interface DirectusGearListing {
 }
 
 export interface TransformedGearListing
-  extends Omit<DirectusGearListing, "gear_images"> {
+  extends Omit<DirectusGearListing, "gear_images" | "client_id"> {
   gear_images: DirectusFile[];
+  user_id: DirectusUser | null;
 }
 
 export interface DirectusRentalRequest {
@@ -77,22 +84,64 @@ export const loginUser = async (email: string, password: string) => {
     return response;
   } catch (error) {
     console.error("Login error:", error);
-    throw error;
+    throw new Error("Failed to login. Please check your credentials.");
   }
 };
 
-export const registerUser = async (userData: {
-  email: string;
-  password: string;
-  first_name: string;
-  last_name: string;
-}) => {
+export const register = async (
+  email: string,
+  password: string,
+  firstName: string,
+  lastName: string
+) => {
   try {
-    const response = await directus.request(createItem("users", userData));
-    return response;
+    // First create the user
+    const userResponse = await directus.request(
+      createUser({
+        email,
+        password,
+        first_name: firstName,
+        last_name: lastName,
+        role: "5886bdc4-8845-49f5-9db7-9073390e1e77", // Replace with your default role ID
+      })
+    );
+
+    console.log("User created:", userResponse);
+
+    // Then create a client for this user
+    const clientResponse = await directus.request(
+      createItem("clients", {
+        user_id: userResponse.id,
+      })
+    );
+
+    // Return both the user and client data
+    return {
+      user: userResponse,
+      client: clientResponse,
+    };
   } catch (error) {
     console.error("Registration error:", error);
-    throw error;
+    throw new Error("Failed to register. Please try again.");
+  }
+};
+
+export const logout = async () => {
+  try {
+    await directus.request(login("", "")); // This will clear the auth token
+  } catch (error) {
+    console.error("Logout error:", error);
+    throw new Error("Failed to logout.");
+  }
+};
+
+export const getCurrentUser = async () => {
+  try {
+    const response = await directus.request(readItem("users", "me"));
+    return response;
+  } catch (error) {
+    console.error("Get current user error:", error);
+    return null;
   }
 };
 
@@ -150,7 +199,7 @@ export const getGearListings = async ({
 
     const requestConfig = {
       filter: query,
-      fields: ["*", "user_id.*", "gear_images.directus_files_id"],
+      fields: ["*", "client_id.user_id.*", "gear_images.directus_files_id"],
       sort: sortField,
       page,
       limit,
@@ -162,13 +211,6 @@ export const getGearListings = async ({
     )) as unknown as
       | DirectusResponse<DirectusGearListing>
       | DirectusGearListing[];
-
-    const result = await directus.request(
-      readItems("gear_listings", {
-        fields: ["gear_images.directus_files_id "],
-      })
-    );
-    console.log(result);
 
     let data: DirectusGearListing[] = [];
     let totalCount = 0;
@@ -183,6 +225,7 @@ export const getGearListings = async ({
 
     const transformedData = data.map((listing) => ({
       ...listing,
+      user_id: listing.client_id?.user_id || null,
       gear_images: (listing.gear_images || []).map((image) => ({
         id: image.directus_files_id,
         filename_download: image.directus_files_id,
@@ -204,12 +247,13 @@ export const getGearListing = async (id: string) => {
   try {
     const response = (await directus.request(
       readItem("gear_listings", id, {
-        fields: ["*", "user_id.*", "gear_images.directus_files_id"],
+        fields: ["*", "client_id.user_id.*", "gear_images.directus_files_id"],
       })
     )) as DirectusGearListing;
 
     const transformedResponse = {
       ...response,
+      user_id: response.client_id?.user_id || null,
       gear_images: (response.gear_images || []).map((image) => ({
         id: image.directus_files_id,
         filename_download: image.directus_files_id,
@@ -256,30 +300,24 @@ export const createGearListing = async (listingData: {
   price: number;
   condition: string;
   location: string;
-  user_id: string;
+  client_id: string;
   images: File[];
 }) => {
   try {
-    // First, upload the images using the new upload function
+    // First, upload the images
     const imageUploads = await Promise.all(
       listingData.images.map((image) => uploadFile(image))
     );
 
-    console.log("Uploaded images:", imageUploads);
-
-    // For a files relationship, we just need to provide the array of file IDs
+    // Create the gear listing with the client_id
     const createData = {
       ...listingData,
       gear_images: imageUploads.map((upload) => upload.id),
     };
 
-    console.log("Creating gear listing with data:", createData);
-
     const response = await directus.request(
       createItem("gear_listings", createData)
     );
-
-    console.log("Created gear listing:", response);
 
     return response as DirectusGearListing;
   } catch (error) {
@@ -370,4 +408,45 @@ export const getReviews = async (userId: string) => {
 
 export const getAssetURL = (fileId: string) => {
   return `${DIRECTUS_URL}/assets/${fileId}?width=800&height=600&fit=cover&quality=80`;
+};
+
+export const getOrCreateClient = async (userId: string) => {
+  try {
+    // First try to find an existing client
+    const existingClients = await directus.request(
+      readItems("clients", {
+        filter: { user_id: userId },
+        limit: 1,
+      })
+    );
+
+    if (existingClients && existingClients.length > 0) {
+      return existingClients[0];
+    }
+
+    // If no client exists, create one
+    const newClient = await directus.request(
+      createItem("clients", {
+        user_id: userId,
+      })
+    );
+
+    return newClient;
+  } catch (error) {
+    console.error("Error getting or creating client:", error);
+    throw error;
+  }
+};
+
+export const getCurrentClient = async () => {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return null;
+
+    const client = await getOrCreateClient(currentUser.id);
+    return client;
+  } catch (error) {
+    console.error("Error getting current client:", error);
+    return null;
+  }
 };

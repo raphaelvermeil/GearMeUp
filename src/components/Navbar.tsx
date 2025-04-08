@@ -3,10 +3,12 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useAuth } from "@/contexts/AuthContext"
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
+  const { user, handleLogout } = useAuth()
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -38,15 +40,37 @@ const Navbar = () => {
                   {item.name}
                 </Link>
               ))}
+              {user && (
+                <Link
+                  href="/gear/new"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  List Gear
+                </Link>
+              )}
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <Link
-              href="/login"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-            >
-              Sign in
-            </Link>
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-700">
+                  {user.first_name} {user.last_name}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="bg-white text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/auth"
+                className="bg-green-600 text-white hover:bg-green-700 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
           <div className="-mr-2 flex items-center sm:hidden">
             <button
@@ -110,12 +134,26 @@ const Navbar = () => {
         </div>
         <div className="pt-4 pb-3 border-t border-gray-200">
           <div className="mt-3 space-y-1">
-            <Link
-              href="/login"
-              className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-            >
-              Sign in
-            </Link>
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-700">
+                  {user.first_name} {user.last_name}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/auth"
+                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </div>
