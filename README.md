@@ -1,24 +1,111 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# GearShare - Outdoor Gear Rental Marketplace
+
+GearShare is a sharing economy platform that allows people to rent their outdoor gear to others in their community. It's similar to Facebook Marketplace but specifically focused on outdoor equipment rental.
+
+## Features
+
+- User registration and authentication
+- Create and manage gear listings
+- Browse and search for gear by category, condition, and price
+- Request to rent gear with specific dates
+- Manage rental requests (both as owner and renter)
+- Review system for both renters and owners
+- Responsive design for mobile and desktop
+
+## Tech Stack
+
+- Frontend: Next.js 14 with TypeScript
+- Styling: Tailwind CSS
+- Backend: Directus (Headless CMS)
+- Authentication: NextAuth.js
+- Deployment: Netlify
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+ and npm
+- Directus instance (local or hosted)
+- Netlify account (for deployment)
+
+### Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/yourusername/gearshare.git
+   cd gearshare
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env.local` file in the root directory with the following variables:
+
+   ```
+   NEXT_PUBLIC_DIRECTUS_URL=http://localhost:8055
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=your-secret-key-here
+   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
+   ```
+
+4. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Directus Setup
+
+1. Install and set up Directus following their [documentation](https://docs.directus.io/getting-started/installation/).
+
+2. Create the following collections in Directus:
+
+   - users
+   - gear_listings
+   - gear_images
+   - rental_requests
+   - reviews
+   - messages
+
+3. Configure the collections with the fields specified in `directus-schema.md`.
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js app directory
+│   ├── gear/              # Gear listing pages
+│   ├── rentals/           # Rental management pages
+│   └── auth/              # Authentication pages
+├── components/            # Reusable components
+├── lib/                   # Utility functions and API calls
+└── styles/               # Global styles
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Contributing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Next.js](https://nextjs.org/)
+- [Directus](https://directus.io/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [NextAuth.js](https://next-auth.js.org/)
 
 ## Learn More
 
