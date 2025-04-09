@@ -84,7 +84,7 @@ export default function GearPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Gear Listings</h1>
         <Link
-          href="/gear/create"
+          href="/gear/new"
           className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
         >
           List Your Gear

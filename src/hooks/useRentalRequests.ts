@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
-import { getRentalRequests } from "@/lib/directus";
-import type { DirectusRentalRequest } from "@/lib/directus";
+import { getRentalRequests, DirectusRentalRequest } from "@/lib/directus";
 
-interface UseRentalRequestsOptions {
-  userId: string;
-  role: "owner" | "renter";
+interface RentalRequestsState {
+  data: DirectusRentalRequest[];
+  totalItems: number;
 }
 
-export function useRentalRequests({ userId, role }: UseRentalRequestsOptions) {
-  const [requests, setRequests] = useState<DirectusRentalRequest[]>([]);
+export const useRentalRequests = (userId: string, role: "owner" | "renter") => {
+  const [requests, setRequests] = useState<RentalRequestsState>({
+    data: [],
+    totalItems: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    async function fetchRequests() {
+    const fetchRequests = async () => {
       try {
         setLoading(true);
         const data = await getRentalRequests(userId, role);
@@ -23,14 +25,12 @@ export function useRentalRequests({ userId, role }: UseRentalRequestsOptions) {
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    fetchRequests();
+    if (userId) {
+      fetchRequests();
+    }
   }, [userId, role]);
 
-  return {
-    requests,
-    loading,
-    error,
-  };
-}
+  return { requests, loading, error };
+};
