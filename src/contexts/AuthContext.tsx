@@ -1,96 +1,102 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
-import { loginUser, logout, getCurrentUser } from '@/lib/directus'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-
-interface User {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-}
+import { loginUser, getCurrentUser, DirectusUser, AuthenticationData } from '@/lib/directus'
 
 interface AuthContextType {
-  user: User | null
+  user: DirectusUser | null
   loading: boolean
+  error: string | null
   handleLogin: (email: string, password: string) => Promise<void>
   handleLogout: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<DirectusUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    loadUser()
-  }, [])
+  console.log("AuthContext: Initializing provider...")
 
   const loadUser = async () => {
     try {
+      console.log("AuthContext: Attempting to load current user...")
       const currentUser = await getCurrentUser()
+      console.log("AuthContext: Current user response:", currentUser)
+      
       if (currentUser) {
-        setUser({
-          id: currentUser.id,
-          email: currentUser.email,
-          first_name: currentUser.first_name,
-          last_name: currentUser.last_name,
-        })
+        setUser(currentUser)
       } else {
         setUser(null)
       }
     } catch (error) {
-      console.error('Error loading user:', error)
+      console.error("AuthContext: Error loading user:", error)
       setUser(null)
     } finally {
       setLoading(false)
     }
   }
 
+  useEffect(() => {
+    console.log("AuthContext: Running initial user check...")
+    loadUser()
+  }, [])
+
   const handleLogin = async (email: string, password: string) => {
     try {
-      await loginUser(email, password)
-      const currentUser = await getCurrentUser()
-      if (currentUser) {
-        setUser({
-          id: currentUser.id,
-          email: currentUser.email,
-          first_name: currentUser.first_name,
-          last_name: currentUser.last_name,
-        })
-      }
+      setLoading(true);
+      setError(null);
+      
+      const response = await loginUser(email, password);
+      console.log('Login response:', response);
+      
+      // Add a small delay to ensure the token is set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const userData = await getCurrentUser();
+      setUser(userData);
+      router.push('/gear');
     } catch (error) {
-      console.error('Login error:', error)
-      throw error
+      console.error('Login error:', error);
+      setError('Failed to login. Please check your credentials.');
+      throw error;
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const handleLogout = async () => {
     try {
-      await logout()
+      console.log("AuthContext: Starting logout process...")
+      setLoading(true)
+      
+      localStorage.removeItem('auth_token')
       setUser(null)
-      router.push('/auth')
+      router.push("/")
+      console.log("AuthContext: Logout successful")
     } catch (error) {
-      console.error('Logout error:', error)
+      console.error("AuthContext: Logout error:", error)
       throw error
+    } finally {
+      setLoading(false)
     }
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        handleLogin,
-        handleLogout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  const value = {
+    user,
+    loading,
+    error,
+    handleLogin,
+    handleLogout,
+  }
+
+  console.log("AuthContext: Provider initialized with value:", value)
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

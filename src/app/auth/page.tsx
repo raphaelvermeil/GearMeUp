@@ -14,19 +14,32 @@ export default function AuthPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  
+  // console.log("Auth Page: Component rendered")
   const { handleLogin } = useAuth()
+  // console.log("Auth Page: Auth hook initialized, handleLogin:", handleLogin)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("Auth Page: Form submitted!")
+    console.log("Auth Page: Form values:", { email, password, isLogin })
     setError('')
     setLoading(true)
 
     try {
       if (isLogin) {
+        console.log("Auth Page: Starting login process...")
+        if (!handleLogin) {
+          console.error("Auth Page: handleLogin is undefined!")
+          throw new Error("handleLogin function is not available")
+        }
+        console.log("Auth Page: Calling handleLogin with:", { email, password })
         await handleLogin(email, password)
+        console.log("Auth Page: Login completed, redirecting...")
         router.push('/gear')
       } else {
         // Register new user
+        console.log("Auth Page: Starting registration...")
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
@@ -45,11 +58,14 @@ export default function AuthPage() {
           throw new Error(errorData.message || 'Registration failed')
         }
 
-        // After successful registration, log the user in
+        // After successful registration, log the user in to update the auth context
+        console.log("Auth Page: Registration successful, logging in...")
         await handleLogin(email, password)
+        console.log("Auth Page: Login after registration successful, redirecting...")
         router.push('/gear')
       }
     } catch (err) {
+      console.error("Auth error:", err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
@@ -163,11 +179,7 @@ export default function AuthPage() {
                 disabled={loading}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                {loading
-                  ? 'Processing...'
-                  : isLogin
-                  ? 'Sign in'
-                  : 'Create account'}
+                {loading ? 'Loading...' : isLogin ? 'Sign in' : 'Create account'}
               </button>
             </div>
           </form>
@@ -187,13 +199,10 @@ export default function AuthPage() {
             <div className="mt-6">
               <button
                 type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin)
-                  setError('')
-                }}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onClick={() => setIsLogin(!isLogin)}
+                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                {isLogin ? 'Create an account' : 'Sign in'}
+                {isLogin ? 'Create an account' : 'Sign in instead'}
               </button>
             </div>
           </div>

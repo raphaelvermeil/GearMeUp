@@ -10,8 +10,10 @@ import {
   deleteItem,
   readAssetRaw,
   createUser,
+  readMe,
 } from "@directus/sdk";
 
+// Use the correct Directus URL directly
 const DIRECTUS_URL = "https://creative-blini-b15912.netlify.app";
 
 export interface DirectusUser {
@@ -19,6 +21,10 @@ export interface DirectusUser {
   email: string;
   first_name: string;
   last_name: string;
+  role: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DirectusFile {
@@ -29,7 +35,9 @@ export interface DirectusFile {
 
 export interface DirectusClient {
   id: string;
-  user_id: DirectusUser;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DirectusGearListing {
@@ -73,18 +81,35 @@ export interface DirectusReview {
   comment: string;
 }
 
+export interface AuthenticationData {
+  access_token: string;
+  refresh_token: string;
+  expires: number;
+}
+
+// Initialize the Directus client
 export const directus = createDirectus(DIRECTUS_URL)
-  .with(authentication("cookie", { credentials: "include" }))
-  .with(rest({ credentials: "include" }));
+  .with(authentication("json"))
+  .with(rest());
+
+// Create a public client instance for unauthenticated requests
+export const publicClient = createDirectus(DIRECTUS_URL).with(rest());
 
 // Auth functions
 export const loginUser = async (email: string, password: string) => {
   try {
-    const response = await directus.request(login(email, password));
-    return response;
+    // Use the SDK's login method directly
+    const loginResult = await directus.request(login(email, password));
+
+    // Store the token
+    if (loginResult?.access_token) {
+      await directus.setToken(loginResult.access_token);
+    }
+
+    return loginResult;
   } catch (error) {
     console.error("Login error:", error);
-    throw new Error("Failed to login. Please check your credentials.");
+    throw error;
   }
 };
 
@@ -95,29 +120,36 @@ export const register = async (
   lastName: string
 ) => {
   try {
-    // First create the user
+    // Create the user
     const userResponse = await directus.request(
       createUser({
         email,
         password,
         first_name: firstName,
         last_name: lastName,
-        role: "5886bdc4-8845-49f5-9db7-9073390e1e77", // Replace with your default role ID
+        role: "5886bdc4-8845-49f5-9db7-9073390e1e77",
       })
     );
 
-    console.log("User created:", userResponse);
+    // Login the user
+    const loginResult = await loginUser(email, password);
 
-    // Then create a client for this user
+    // Get the current user
+    const currentUser = await directus.request(readMe());
+
+    if (!currentUser?.id) {
+      throw new Error("Failed to get current user after login");
+    }
+
+    // Create client for the user
     const clientResponse = await directus.request(
       createItem("clients", {
-        user_id: userResponse.id,
+        user: currentUser.id,
       })
     );
 
-    // Return both the user and client data
     return {
-      user: userResponse,
+      user: currentUser,
       client: clientResponse,
     };
   } catch (error) {
@@ -128,22 +160,24 @@ export const register = async (
 
 export const logout = async () => {
   try {
-    await directus.request(login("", "")); // This will clear the auth token
+    console.log("Logging out...");
+    localStorage.removeItem("auth_token");
+    directus.setToken(null);
+    console.log("Logout successful");
   } catch (error) {
     console.error("Logout error:", error);
-    throw new Error("Failed to logout.");
+    throw new Error("Failed to logout");
   }
 };
 
-export const getCurrentUser = async () => {
+export async function getCurrentUser(): Promise<DirectusUser> {
   try {
-    const response = await directus.request(readItem("users", "me"));
-    return response;
+    const response = await directus.request(readMe());
+    return response as DirectusUser;
   } catch (error) {
-    console.error("Get current user error:", error);
-    return null;
+    throw new Error("Failed to get current user");
   }
-};
+}
 
 interface DirectusResponse<T> {
   data: T[];
@@ -206,7 +240,12 @@ export const getGearListings = async ({
       meta: "total_count",
     };
 
-    const response = (await directus.request(
+    console.log("Fetching gear listings with config:", {
+      url: DIRECTUS_URL,
+      config: requestConfig,
+    });
+
+    const response = (await publicClient.request(
       readItems("gear_listings", requestConfig)
     )) as unknown as
       | DirectusResponse<DirectusGearListing>
@@ -245,7 +284,10 @@ export const getGearListings = async ({
 
 export const getGearListing = async (id: string) => {
   try {
-    const response = (await directus.request(
+    console.log("Fetching gear listing with ID:", id);
+    console.log("Using Directus URL:", DIRECTUS_URL);
+
+    const response = (await publicClient.request(
       readItem("gear_listings", id, {
         fields: ["*", "client_id.user_id.*", "gear_images.directus_files_id"],
       })
