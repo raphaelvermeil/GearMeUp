@@ -59,7 +59,7 @@ export default function NewGearPage() {
             List Your Gear
           </h1>
           <p className="mt-2 text-sm text-gray-500">
-            Share your outdoor equipment with the community and earn money when it's not in use.
+            Share your outdoor equipment with the community and earn money when it&apos;s not in use.
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">

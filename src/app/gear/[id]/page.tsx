@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { getGearListing, getAssetURL } from '@/lib/directus'
 import type { TransformedGearListing } from '@/lib/directus'
 import Link from 'next/link'
+import Image from 'next/image'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { useRentalRequest } from '@/hooks/useRentalRequest'
@@ -91,11 +92,14 @@ export default function GearDetailPage() {
         <div className="space-y-4">
           {/* Main Image */}
           {listing.gear_images && listing.gear_images.length > 0 && (
-            <img
-              src={listing.gear_images[selectedImageIndex].url}
-              alt={`${listing.title} - Image ${selectedImageIndex + 1}`}
-              className="w-full rounded-lg shadow-md aspect-video object-cover"
-            />
+            <div className="relative w-full aspect-video">
+              <Image
+                src={listing.gear_images[selectedImageIndex].url}
+                alt={`${listing.title} - Image ${selectedImageIndex + 1}`}
+                fill
+                className="rounded-lg shadow-md object-cover"
+              />
+            </div>
           )}
           
           {/* Thumbnails */}
@@ -105,14 +109,15 @@ export default function GearDetailPage() {
                 <button
                   key={image.id}
                   onClick={() => setSelectedImageIndex(index)}
-                  className={`relative rounded-lg overflow-hidden ${
+                  className={`relative rounded-lg overflow-hidden aspect-square ${
                     selectedImageIndex === index ? 'ring-2 ring-green-500' : ''
                   }`}
                 >
-                  <img
+                  <Image
                     src={image.url}
                     alt={`${listing.title} - Thumbnail ${index + 1}`}
-                    className="w-full aspect-square object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </button>
               ))}

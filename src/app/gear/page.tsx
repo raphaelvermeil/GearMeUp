@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useGearListings, type SortOption } from '@/hooks/useGearListings'
 import type { TransformedGearListing } from '@/lib/directus'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const categories = [
   'Camping',
@@ -158,11 +159,14 @@ export default function GearPage() {
               className="border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
             >
               {listing.gear_images && listing.gear_images.length > 0 ? (
-                <img
-                  src={listing.gear_images[0].url}
-                  alt={listing.title}
-                  className="w-full h-48 object-cover"
-                />
+                <div className="relative w-full h-48">
+                  <Image
+                    src={listing.gear_images[0].url}
+                    alt={listing.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               ) : (
                 <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
                   <span className="text-gray-500">No image available</span>
