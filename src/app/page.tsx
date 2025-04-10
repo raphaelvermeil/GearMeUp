@@ -1,21 +1,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import HeroImage from '@/components/HeroImage'
 
 export default function Home() {
   return (
     <div className="bg-white">
       {/* Hero section */}
-      <div className="relative bg-gray-900">
-        <div className="absolute inset-0">
-          <Image
-            src="/hero-bg.jpg"
-            alt="Outdoor adventure background"
-            fill
-            className="object-cover opacity-50"
-            priority
-          />
-          <div className="absolute inset-0 bg-gray-900 mix-blend-multiply" />
-        </div>
+      <div className="relative bg-gray-900 min-h-[600px]">
+        <HeroImage />
         <div className="relative max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
             Share Your Outdoor Gear
@@ -64,7 +56,7 @@ export default function Home() {
               className="group relative rounded-lg overflow-hidden bg-gray-100"
             >
               <div className="aspect-w-3 aspect-h-2">
-                <Image
+        <Image
                   src={category.image}
                   alt={category.name}
                   fill

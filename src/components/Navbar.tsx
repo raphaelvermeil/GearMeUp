@@ -13,7 +13,6 @@ const Navbar = () => {
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'Browse Gear', href: '/gear' },
-    { name: 'List Gear', href: '/gear/new' },
   ]
 
   return (
@@ -43,7 +42,11 @@ const Navbar = () => {
               {user && (
                 <Link
                   href="/gear/new"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  className={`${
+                    pathname === '/gear/new'
+                      ? 'border-green-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
                 >
                   List Gear
                 </Link>

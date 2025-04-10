@@ -5,6 +5,7 @@ import { useGearListings, type SortOption } from '@/hooks/useGearListings'
 import type { TransformedGearListing } from '@/lib/directus'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useAuth } from '@/contexts/AuthContext'
 
 const categories = [
   'Camping',
@@ -34,6 +35,7 @@ export default function GearPage() {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [sort, setSort] = useState<SortOption>('date_created_desc')
+  const { user } = useAuth()
 
   const { listings = [], loading, error, totalPages } = useGearListings({
     filters,
@@ -84,12 +86,14 @@ export default function GearPage() {
       {/* Top Bar with Create Button */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Gear Listings</h1>
-        <Link
-          href="/gear/new"
-          className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
-        >
-          List Your Gear
-        </Link>
+        {user && (
+          <Link
+            href="/gear/new"
+            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+          >
+            List Your Gear
+          </Link>
+        )}
       </div>
 
       {/* Filters and Sort */}
