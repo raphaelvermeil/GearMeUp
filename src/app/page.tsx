@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import HeroImage from '@/components/HeroImage'
+import MountainImage from '@/components/MountainImage'
+import InfiniteSlider from '@/components/InfiniteSlider'
 
 export default function Home() {
   return (
     <div className="bg-white">
       {/* Hero section */}
       <div className="relative bg-gray-900 min-h-[600px]">
-        <HeroImage />
+        <MountainImage />
         <div className="relative max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
             Share Your Outdoor Gear
@@ -26,7 +27,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Featured categories */}
+      {/* Featured categories
       <div className="max-w-7xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:px-8">
         <h2 className="text-3xl font-extrabold text-gray-900">Popular Categories</h2>
         <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -34,19 +35,19 @@ export default function Home() {
             {
               name: 'Camping',
               description: 'Tents, sleeping bags, and cooking equipment',
-              image: '/categories/camping.jpg',
+              image: '/images/camping.jpg',
               href: '/gear?category=camping',
             },
             {
               name: 'Hiking',
               description: 'Backpacks, trekking poles, and navigation gear',
-              image: '/categories/hiking.jpg',
+              image: '/images/hiking.jpg',
               href: '/gear?category=hiking',
             },
             {
               name: 'Climbing',
               description: 'Harnesses, ropes, and climbing shoes',
-              image: '/categories/climbing.jpg',
+              image: '/images/climbing.jpg',
               href: '/gear?category=climbing',
             },
           ].map((category) => (
@@ -56,20 +57,31 @@ export default function Home() {
               className="group relative rounded-lg overflow-hidden bg-gray-100"
             >
               <div className="aspect-w-3 aspect-h-2">
-        <Image
+                <Image
                   src={category.image}
                   alt={category.name}
                   fill
-                  className="object-cover group-hover:opacity-75"
+                  sizes="100vw"
+                  className="object-cover"
                 />
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-900/50" />
               <div className="absolute bottom-0 left-0 p-6">
                 <h3 className="text-xl font-semibold text-white">{category.name}</h3>
                 <p className="mt-1 text-sm text-gray-300">{category.description}</p>
               </div>
             </Link>
           ))}
+        </div>
+      </div> */}
+
+      {/* Infinite Slider section */}
+      <div className="border-t border-gray-200" style={{ paddingTop: '10px' }}>
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
+            Discover More Activities
+          </h2>
+          <InfiniteSlider />
         </div>
       </div>
 

@@ -2,11 +2,11 @@
 
 import Image from 'next/image';
 
-export default function HeroImage() {
+export default function MountainImage() {
   return (
     <div className="absolute inset-0 h-full w-full">
       <Image
-        src="/images/pexels-eberhardgross-1287145.jpg"
+        src="/images/mountain.jpg"
         alt="Outdoor adventure background"
         fill
         sizes="100vw"
