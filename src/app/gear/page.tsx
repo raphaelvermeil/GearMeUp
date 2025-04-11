@@ -87,10 +87,10 @@ export default function GearPage() {
       <div className="relative bg-gray-900 min-h-[300px]">
         <div className="absolute inset-0">
           <Image
-            src="/images/gear-hero.jpg"
+            src="/images/equipment.jpg"
             alt="Gear listings background"
             fill
-            className="object-cover opacity-50"
+            className="object-cover"
             priority
           />
           <div className="absolute inset-0 bg-gray-900/60" />
