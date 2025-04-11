@@ -51,7 +51,9 @@ export default function InfiniteSlider() {
                 src={item.image}
                 alt={item.name}
                 fill
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                 className="object-cover"
+                quality={90}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-0 left-0 p-4">
@@ -75,7 +77,9 @@ export default function InfiniteSlider() {
                 src={item.image}
                 alt={item.name}
                 fill
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                 className="object-cover"
+                quality={90}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-0 left-0 p-4">
