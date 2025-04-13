@@ -45,8 +45,9 @@ export default function InfiniteSlider() {
             <div
               key={`${item.name}-1`}
               className={`flex-none w-64 h-48 relative rounded-lg overflow-hidden ${index === items.length - 1 ? 'mr-8' : ''}`} // Add margin to the last item
-
+              
             >
+              
               <Image
                 src={item.image}
                 alt={item.name}

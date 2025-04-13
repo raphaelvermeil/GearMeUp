@@ -75,16 +75,6 @@ export default function Home() {
         </div>
       </div> */}
 
-      {/* Infinite Slider section */}
-      <div className="border-t border-gray-200" style={{ paddingTop: '10px' }}>
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-            Discover More Activities
-          </h2>
-          <InfiniteSlider />
-        </div>
-      </div>
-
       {/* How it works section */}
       <div className="bg-gray-50">
         <div className="max-w-7xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:px-8">
@@ -165,6 +155,18 @@ export default function Home() {
           </div>
         </div>
       </div>
-    </div>
+   
+
+      {/* Infinite Slider section */}
+      <div className="border-t border-gray-200" style={{ paddingTop: '10px' }}>
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
+            Discover More Activities
+          </h2>
+          <InfiniteSlider />
+        </div>
+      </div>
+
+       </div>
   )
 }

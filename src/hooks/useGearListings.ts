@@ -42,9 +42,9 @@ export function useGearListings({
           limit: itemsPerPage,
           sort,
         });
-        setListings(response.data);
-        setTotalItems(response.totalItems);
-        setTotalPages(Math.ceil(response.totalItems / itemsPerPage));
+        setListings(response);
+        setTotalItems(response.length);
+        setTotalPages(Math.ceil(response.length / itemsPerPage));
       } catch (err) {
         setError(err as Error);
       } finally {

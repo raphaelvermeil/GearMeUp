@@ -1,8 +1,24 @@
 'use client'
 
+
+/*
+This is a React Context that manages the authentication state throughout the application
+It provides:
+The current authentication state (logged in/out)
+User information
+Login/logout functionality
+Token management
+It's used throughout the application to:
+Protect routes
+Show/hide UI elements based on auth state
+Access user information
+Handle authentication-related operations
+*/
+
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { loginUser, getCurrentUser, DirectusUser, AuthenticationData } from '@/lib/directus'
+import { loginUser, getCurrentUser, DirectusUser, AuthenticationData, logout } from '@/lib/directus'
 
 interface AuthContextType {
   user: DirectusUser | null
@@ -74,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("AuthContext: Starting logout process...")
       setLoading(true)
       
-      localStorage.removeItem('auth_token')
+      await logout()
       setUser(null)
       router.push("/")
       console.log("AuthContext: Logout successful")

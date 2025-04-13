@@ -11,6 +11,7 @@ import {
   readAssetRaw,
   createUser,
   readMe,
+  uploadFiles,
 } from "@directus/sdk";
 
 // Use the correct Directus URL directly
@@ -48,18 +49,44 @@ export interface DirectusGearListing {
   condition: string;
   location: string;
   category: string;
-  client_id: DirectusClient;
+  user_id: {
+    id: string;
+    user: {
+      id: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+    };
+  };
   gear_images: Array<{
     id: string;
     gear_listings_id: string;
-    directus_files_id: string;
+    directus_files_id: {
+      id: string;
+    };
   }>;
 }
 
-export interface TransformedGearListing
-  extends Omit<DirectusGearListing, "gear_images" | "client_id"> {
-  gear_images: DirectusFile[];
-  user_id: DirectusUser | null;
+export interface TransformedGearListing {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  condition: string;
+  location: string;
+  category: string;
+  gear_images: {
+    id: string;
+    url: string;
+  }[];
+  user_id: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+    } | null;
+  } | null;
 }
 
 export interface DirectusRentalRequest {
@@ -205,77 +232,67 @@ export const getGearListings = async ({
   sort?: string;
 } = {}) => {
   try {
-    const query: any = {};
-    if (filters?.category) query.category = filters.category;
-    if (filters?.condition) query.condition = filters.condition;
-    if (filters?.minPrice || filters?.maxPrice) {
-      query.price = {};
-      if (filters.minPrice) query.price._gte = filters.minPrice;
-      if (filters.maxPrice) query.price._lte = filters.maxPrice;
-    }
+    const filter: any = {};
+    if (filters?.category) filter.category = filters.category;
+    if (filters?.condition) filter.condition = filters.condition;
+    if (filters?.minPrice) filter.price = { _gte: filters.minPrice };
+    if (filters?.maxPrice)
+      filter.price = { ...filter.price, _lte: filters.maxPrice };
 
-    let sortField: string[] = [];
-    switch (sort) {
-      case "price_asc":
-        sortField = ["price"];
-        break;
-      case "price_desc":
-        sortField = ["-price"];
-        break;
-      case "date_created_asc":
-        sortField = ["date_created"];
-        break;
-      case "date_created_desc":
-      default:
-        sortField = ["-date_created"];
-        break;
-    }
+    const response = (await directus.request(
+      readItems("gear_listings", {
+        fields: [
+          "*",
+          "user_id.id",
+          "user_id.user.id",
+          "user_id.user.email",
+          "user_id.user.first_name",
+          "user_id.user.last_name",
+          "gear_images.*",
+          "gear_images.directus_files_id.*",
+        ],
+        filter,
+        page,
+        limit,
+        sort:
+          sort === "date_created_desc"
+            ? "-date_created"
+            : sort === "date_created_asc"
+            ? "date_created"
+            : sort === "price_asc"
+            ? "price"
+            : "-price",
+      })
+    )) as DirectusGearListing[];
 
-    const requestConfig = {
-      filter: query,
-      fields: ["*", "client_id.user_id.*", "gear_images.directus_files_id"],
-      sort: sortField,
-      page,
-      limit,
-      meta: "total_count",
-    };
-
-    console.log("Fetching gear listings with config:", {
-      url: DIRECTUS_URL,
-      config: requestConfig,
-    });
-
-    const response = (await publicClient.request(
-      readItems("gear_listings", requestConfig)
-    )) as unknown as
-      | DirectusResponse<DirectusGearListing>
-      | DirectusGearListing[];
-
-    let data: DirectusGearListing[] = [];
-    let totalCount = 0;
-
-    if (Array.isArray(response)) {
-      data = response;
-      totalCount = response.length;
-    } else if (response && "data" in response) {
-      data = response.data || [];
-      totalCount = response.meta?.total_count || 0;
-    }
-
-    const transformedData = data.map((listing) => ({
-      ...listing,
-      user_id: listing.client_id?.user_id || null,
-      gear_images: (listing.gear_images || []).map((image) => ({
-        id: image.directus_files_id,
-        filename_download: image.directus_files_id,
-        url: `${DIRECTUS_URL}/assets/${image.directus_files_id}?width=800&height=600&fit=cover&quality=80`,
+    // Transform the response to match our TransformedGearListing interface
+    const transformedListings = response.map((listing) => ({
+      id: listing.id,
+      title: listing.title,
+      description: listing.description,
+      price: listing.price,
+      condition: listing.condition,
+      location: listing.location,
+      category: listing.category,
+      gear_images: listing.gear_images.map((image) => ({
+        id: image.id,
+        url: getAssetURL(image.directus_files_id.id),
       })),
+      user_id: listing.user_id
+        ? {
+            id: listing.user_id.id,
+            user: listing.user_id.user
+              ? {
+                  id: listing.user_id.user.id,
+                  first_name: listing.user_id.user.first_name,
+                  last_name: listing.user_id.user.last_name,
+                }
+              : null,
+          }
+        : null,
     }));
 
-    return {
-      data: transformedData as TransformedGearListing[],
-      totalItems: totalCount,
-    };
+    return transformedListings;
   } catch (error) {
     console.error("Error fetching gear listings:", error);
     throw error;
@@ -284,28 +301,51 @@ export const getGearListings = async ({
 
 export const getGearListing = async (id: string) => {
   try {
-    console.log("Fetching gear listing with ID:", id);
-    console.log("Using Directus URL:", DIRECTUS_URL);
-
-    const response = (await publicClient.request(
+    const response = (await directus.request(
       readItem("gear_listings", id, {
-        fields: ["*", "client_id.user_id.*", "gear_images.directus_files_id"],
+        fields: [
+          "*",
+          "user_id.id",
+          "user_id.user.id",
+          "user_id.user.email",
+          "user_id.user.first_name",
+          "user_id.user.last_name",
+          "gear_images.*",
+          "gear_images.directus_files_id.*",
+        ],
       })
     )) as DirectusGearListing;
 
-    const transformedResponse = {
-      ...response,
-      user_id: response.client_id?.user_id || null,
-      gear_images: (response.gear_images || []).map((image) => ({
-        id: image.directus_files_id,
-        filename_download: image.directus_files_id,
-        url: `${DIRECTUS_URL}/assets/${image.directus_files_id}?width=800&height=600&fit=cover&quality=80`,
+    // Transform the response to match our interface
+    const transformedListing: TransformedGearListing = {
+      id: response.id,
+      title: response.title,
+      description: response.description,
+      price: response.price,
+      condition: response.condition,
+      location: response.location,
+      category: response.category,
+      gear_images: response.gear_images.map((image) => ({
+        id: image.id,
+        url: getAssetURL(image.directus_files_id.id),
       })),
+      user_id: response.user_id
+        ? {
+            id: response.user_id.id,
+            user: response.user_id.user
+              ? {
+                  id: response.user_id.user.id,
+                  first_name: response.user_id.user.first_name,
+                  last_name: response.user_id.user.last_name,
+                }
+              : null,
+          }
+        : null,
     };
 
-    return transformedResponse as TransformedGearListing;
+    return transformedListing;
   } catch (error) {
-    console.error("Error fetching gear listing:", error);
+    console.error("Error getting gear listing:", error);
     throw error;
   }
 };
@@ -315,20 +355,8 @@ export const uploadFile = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
 
-    // Upload the file using fetch directly to ensure proper multipart/form-data handling
-    const uploadResponse = await fetch(`${DIRECTUS_URL}/files`, {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`File upload failed: ${uploadResponse.statusText}`);
-    }
-
-    const fileData = await uploadResponse.json();
-    console.log("Uploaded file data:", fileData);
-    return fileData;
+    const response = await directus.request(uploadFiles(formData));
+    return response[0]; // Return the first uploaded file
   } catch (error) {
     console.error("Error uploading file:", error);
     throw error;
@@ -342,19 +370,33 @@ export const createGearListing = async (listingData: {
   price: number;
   condition: string;
   location: string;
-  client_id: string;
+  user_id: string;
   images: File[];
 }) => {
   try {
-    // First, upload the images
+    // First, get or create the client for the user
+    const client = await getOrCreateClient(listingData.user_id);
+    if (!client) {
+      throw new Error("Failed to get or create client");
+    }
+
+    // Upload all images
     const imageUploads = await Promise.all(
       listingData.images.map((image) => uploadFile(image))
     );
 
-    // Create the gear listing with the client_id
+    // Create the gear listing with the client ID
     const createData = {
-      ...listingData,
-      gear_images: imageUploads.map((upload) => upload.id),
+      title: listingData.title,
+      description: listingData.description,
+      category: listingData.category,
+      price: listingData.price,
+      condition: listingData.condition,
+      location: listingData.location,
+      user_id: client.id, // Use the client ID instead of user ID
+      gear_images: imageUploads.map((upload) => ({
+        directus_files_id: upload.id,
+      })),
     };
 
     const response = await directus.request(
@@ -454,10 +496,16 @@ export const getAssetURL = (fileId: string) => {
 
 export const getOrCreateClient = async (userId: string) => {
   try {
+    // Check if we have a token
+    const token = await directus.getToken();
+    if (!token) {
+      throw new Error("Not authenticated");
+    }
+
     // First try to find an existing client
     const existingClients = await directus.request(
       readItems("clients", {
-        filter: { user_id: userId },
+        filter: { user: userId },
         limit: 1,
       })
     );
@@ -469,13 +517,18 @@ export const getOrCreateClient = async (userId: string) => {
     // If no client exists, create one
     const newClient = await directus.request(
       createItem("clients", {
-        user_id: userId,
+        user: userId,
       })
     );
 
     return newClient;
   } catch (error) {
     console.error("Error getting or creating client:", error);
+    if (error instanceof Error) {
+      if (error.message === "Not authenticated") {
+        throw new Error("You must be logged in to create a gear listing");
+      }
+    }
     throw error;
   }
 };

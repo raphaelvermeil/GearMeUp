@@ -153,13 +153,13 @@ export default function GearDetailPage() {
           {/* Owner Information */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <h2 className="text-xl font-semibold mb-2">Owner</h2>
-            <p className="text-gray-600">
-              {listing.user_id ? (
-                `${listing.user_id.first_name} ${listing.user_id.last_name}`
-              ) : (
-                "Owner information not available"
-              )}
-            </p>
+            {listing.user_id?.user ? (
+              <p className="text-gray-600">
+                {listing.user_id.user.first_name} {listing.user_id.user.last_name}
+              </p>
+            ) : (
+              <p className="text-gray-600">Unknown user</p>
+            )}
           </div>
 
           {/* Rental Request Form */}
