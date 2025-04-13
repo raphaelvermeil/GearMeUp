@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getGearListing, getAssetURL } from '@/lib/directus'
+import { getGearListing, getAssetURL, getOrCreateClient } from '@/lib/directus'
+import { useAuth } from '@/contexts/AuthContext'
 import type { TransformedGearListing } from '@/lib/directus'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -11,6 +12,7 @@ import 'react-datepicker/dist/react-datepicker.css'
 import { useRentalRequest } from '@/hooks/useRentalRequest'
 
 export default function GearDetailPage() {
+  const { user } = useAuth()
   const router = useRouter()
   const { id } = useParams()
   const [listing, setListing] = useState<TransformedGearListing | null>(null)
@@ -49,9 +51,33 @@ export default function GearDetailPage() {
   const handleSubmit = async () => {
     if (!startDate || !endDate || !listing) return
 
+    if (!user) {
+      alert('You must be logged in to submit a rental request')
+      return
+    }
+
+    const clientRenter = await getOrCreateClient(user.id)
+      if (!clientRenter) {
+        throw new Error('Failed to get or create client renter')
+      }
+
+    if (!listing.user_id) {
+      throw new Error('Gear listing has no owner')
+    }
+
+    // const clientOwner = await getOrCreateClient(listing.user_id.id)
+    //   if (!clientOwner) {
+    //     throw new Error('Failed to get or create client owner')
+    //   }
+
+    console.log(clientRenter)
+
+
+
     await submitRequest({
       gear_listing_id: listing.id,
-      renter_id: 'current-user-id', // TODO: Get from auth context
+      renter_id: clientRenter.id,
+      owner_id: listing.user_id.id,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
       message,
@@ -185,7 +211,7 @@ export default function GearDetailPage() {
                   startDate={startDate}
                   endDate={endDate}
                   minDate={new Date()}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                  className="text-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                   placeholderText="Select start date"
                 />
               </div>
@@ -200,7 +226,7 @@ export default function GearDetailPage() {
                   startDate={startDate}
                   endDate={endDate}
                   minDate={startDate || new Date()}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                  className="text-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                   placeholderText="Select end date"
                 />
               </div>
@@ -214,7 +240,7 @@ export default function GearDetailPage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                className="text-blue-500 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                 placeholder="Add a message to the owner..."
               />
             </div>

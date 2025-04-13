@@ -13,6 +13,7 @@ export function useRentalRequest(options: UseRentalRequestOptions = {}) {
   const submitRequest = async (data: {
     gear_listing_id: string;
     renter_id: string;
+    owner_id: string;
     start_date: string;
     end_date: string;
     message?: string;
@@ -23,6 +24,7 @@ export function useRentalRequest(options: UseRentalRequestOptions = {}) {
       await createRentalRequest({
         gear_listing_id: data.gear_listing_id,
         renter_id: data.renter_id,
+        owner_id: data.owner_id,
         start_date: data.start_date,
         end_date: data.end_date,
       });

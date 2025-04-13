@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '@/contexts/AuthContext'
-import { createGearListing } from '@/lib/directus'
+import { createGearListing, getOrCreateClient } from '@/lib/directus'
 
 type FormData = {
   title: string
@@ -42,17 +42,25 @@ export default function NewGearPage() {
   } = useForm<FormData>()
 
   const onSubmit = async (data: FormData) => {
-    if (!user?.id) {
-      console.error('No user ID available')
+    if (!user) {
+      alert('You must be logged in to create a gear listing')
       return
     }
 
     setIsSubmitting(true)
     try {
+      // First get or create the client for this user
+      const client = await getOrCreateClient(user.id)
+      if (!client) {
+        throw new Error('Failed to get or create client')
+      }
+
+      console.log(client)
+
       const images = Array.from(data.images)
       await createGearListing({
         ...data,
-        user_id: user.id,
+        user_id: client.id, // Use the client ID instead of the user ID
         images,
       })
       router.push('/gear')
@@ -69,7 +77,7 @@ export default function NewGearPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 bg-gray-100">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">List Your Gear</h1>
         
@@ -82,7 +90,7 @@ export default function NewGearPage() {
               type="text"
               id="title"
               {...register('title', { required: 'Title is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-blue-500 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
             />
             {errors.title && (
               <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
@@ -97,7 +105,7 @@ export default function NewGearPage() {
               id="description"
               rows={4}
               {...register('description', { required: 'Description is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-blue-500 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
             />
             {errors.description && (
               <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
@@ -111,7 +119,7 @@ export default function NewGearPage() {
             <select
               id="category"
               {...register('category', { required: 'Category is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-blue-500 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
             >
               <option value="">Select a category</option>
               {categories.map((category) => (
@@ -137,7 +145,7 @@ export default function NewGearPage() {
                 required: 'Price is required',
                 min: { value: 0, message: 'Price must be positive' }
               })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-blue-500 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
             />
             {errors.price && (
               <p className="mt-1 text-sm text-red-600">{errors.price.message}</p>
@@ -151,7 +159,7 @@ export default function NewGearPage() {
             <select
               id="condition"
               {...register('condition', { required: 'Condition is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-blue-500 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
             >
               <option value="">Select condition</option>
               {conditions.map((condition) => (
@@ -173,7 +181,7 @@ export default function NewGearPage() {
               type="text"
               id="location"
               {...register('location', { required: 'Location is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-blue-500 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
             />
             {errors.location && (
               <p className="mt-1 text-sm text-red-600">{errors.location.message}</p>

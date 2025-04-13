@@ -363,7 +363,7 @@ export const uploadFile = async (file: File) => {
   }
 };
 
-export const createGearListing = async (listingData: {
+export const createGearListing = async (data: {
   title: string;
   description: string;
   category: string;
@@ -374,38 +374,59 @@ export const createGearListing = async (listingData: {
   images: File[];
 }) => {
   try {
-    // First, get or create the client for the user
-    const client = await getOrCreateClient(listingData.user_id);
-    if (!client) {
-      throw new Error("Failed to get or create client");
+    // Check if we have a token
+    const token = await directus.getToken();
+    if (!token) {
+      throw new Error("Not authenticated");
     }
 
-    // Upload all images
-    const imageUploads = await Promise.all(
-      listingData.images.map((image) => uploadFile(image))
+    // First upload the images
+    const uploadedImages = await Promise.all(
+      data.images.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch(`${DIRECTUS_URL}/files`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to upload image");
+        }
+
+        const fileData = await response.json();
+        return fileData.data.id;
+      })
     );
 
-    // Create the gear listing with the client ID
-    const createData = {
-      title: listingData.title,
-      description: listingData.description,
-      category: listingData.category,
-      price: listingData.price,
-      condition: listingData.condition,
-      location: listingData.location,
-      user_id: client.id, // Use the client ID instead of user ID
-      gear_images: imageUploads.map((upload) => ({
-        directus_files_id: upload.id,
-      })),
-    };
-
+    // Then create the gear listing with the uploaded image IDs
     const response = await directus.request(
-      createItem("gear_listings", createData)
+      createItem("gear_listings", {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        price: data.price,
+        condition: data.condition,
+        location: data.location,
+        user_id: data.user_id, // Use the client ID directly
+        gear_images: uploadedImages.map((fileId) => ({
+          directus_files_id: fileId,
+        })),
+      })
     );
 
-    return response as DirectusGearListing;
+    return response;
   } catch (error) {
     console.error("Error creating gear listing:", error);
+    if (error instanceof Error) {
+      if (error.message === "Not authenticated") {
+        throw new Error("You must be logged in to create a gear listing");
+      }
+    }
     throw error;
   }
 };
@@ -414,6 +435,7 @@ export const createGearListing = async (listingData: {
 export const createRentalRequest = async (requestData: {
   gear_listing_id: string;
   renter_id: string;
+  owner_id: string;
   start_date: string;
   end_date: string;
 }) => {
@@ -502,6 +524,9 @@ export const getOrCreateClient = async (userId: string) => {
       throw new Error("Not authenticated");
     }
 
+    console.log("THIS IS THE USER ID");
+    console.log(userId);
+
     // First try to find an existing client
     const existingClients = await directus.request(
       readItems("clients", {
@@ -509,6 +534,9 @@ export const getOrCreateClient = async (userId: string) => {
         limit: 1,
       })
     );
+
+    console.log("THIS IS THE EXISTING CLIENTS");
+    console.log(existingClients);
 
     if (existingClients && existingClients.length > 0) {
       return existingClients[0];

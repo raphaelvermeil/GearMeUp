@@ -56,6 +56,12 @@ const Navbar = () => {
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             {user ? (
               <div className="flex items-center space-x-4">
+                <Link
+                  href="/profile"
+                  className="text-gray-700 hover:text-gray-900"
+                >
+                  Profile
+                </Link>
                 <span className="text-gray-700">
                   {user.first_name} {user.last_name}
                 </span>
@@ -138,8 +144,14 @@ const Navbar = () => {
         <div className="pt-4 pb-3 border-t border-gray-200">
           <div className="mt-3 space-y-1">
             {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-gray-700">
+              <div className="flex flex-col space-y-2">
+                <Link
+                  href="/profile"
+                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                >
+                  Profile
+                </Link>
+                <span className="block px-4 py-2 text-base font-medium text-gray-700">
                   {user.first_name} {user.last_name}
                 </span>
                 <button
