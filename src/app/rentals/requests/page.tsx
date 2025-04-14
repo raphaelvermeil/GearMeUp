@@ -28,7 +28,7 @@ export default function RentalRequestsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Rental Requests</h1>
+        {/* <h1 className="text-3xl font-bold">Rental Requests</h1>
         <div className="flex space-x-4">
           <button
             onClick={() => setRole('renter')}
@@ -107,9 +107,9 @@ export default function RentalRequestsPage() {
                 </Link>
               </div>
             </div>
-          ))}
+          ))} */}
         </div>
-      )}
+      {/* )} */}
     </div>
   )
 } 
