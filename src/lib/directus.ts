@@ -92,8 +92,24 @@ export interface TransformedGearListing {
 export interface DirectusRentalRequest {
   id: string;
   gear_listing_id: DirectusGearListing;
-  renter_id: DirectusUser;
-  owner_id: DirectusUser;
+  renter_id: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+  };
+  owner_id: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+  };
   start_date: string;
   end_date: string;
   status: string;
@@ -226,6 +242,7 @@ export const getGearListings = async ({
     condition?: string;
     minPrice?: number;
     maxPrice?: number;
+    user_id?: string;
   };
   page?: number;
   limit?: number;
@@ -238,6 +255,7 @@ export const getGearListings = async ({
     if (filters?.minPrice) filter.price = { _gte: filters.minPrice };
     if (filters?.maxPrice)
       filter.price = { ...filter.price, _lte: filters.maxPrice };
+    if (filters?.user_id) filter.user_id = filters.user_id;
 
     const response = (await directus.request(
       readItems("gear_listings", {
@@ -455,20 +473,31 @@ export const getRentalRequests = async (
   type: "owner" | "renter"
 ) => {
   try {
+    console.log("type", type);
+    console.log("userId", userId);
+
+    const client = await getOrCreateClient(userId);
+    console.log("client", client);
     const query =
-      type === "owner" ? { owner_id: userId } : { renter_id: userId };
+      type === "owner" ? { owner_id: client.id } : { renter_id: client.id };
+
     const response = (await directus.request(
       readItems("rental_requests", {
         filter: query,
-        fields: ["*", "gear_listing_id.*", "renter_id.*", "owner_id.*"],
+        fields: [
+          "*",
+          "gear_listing_id.*",
+          "renter_id.*",
+          "renter_id.user.*",
+          "owner_id.last_name*",
+          "owner_id.user.*",
+        ],
         meta: "total_count",
       })
-    )) as unknown as DirectusResponse<DirectusRentalRequest>;
+    )) as unknown as DirectusRentalRequest[];
 
-    return {
-      data: response.data,
-      totalItems: response.meta?.total_count ?? 0,
-    };
+    console.log("response", response);
+    return response;
   } catch (error) {
     console.error("Error fetching rental requests:", error);
     throw error;
@@ -524,9 +553,6 @@ export const getOrCreateClient = async (userId: string) => {
       throw new Error("Not authenticated");
     }
 
-    console.log("THIS IS THE USER ID");
-    console.log(userId);
-
     // First try to find an existing client
     const existingClients = await directus.request(
       readItems("clients", {
@@ -534,9 +560,6 @@ export const getOrCreateClient = async (userId: string) => {
         limit: 1,
       })
     );
-
-    console.log("THIS IS THE EXISTING CLIENTS");
-    console.log(existingClients);
 
     if (existingClients && existingClients.length > 0) {
       return existingClients[0];
@@ -572,4 +595,9 @@ export const getCurrentClient = async () => {
     console.error("Error getting current client:", error);
     return null;
   }
+};
+
+export const getUser = async (userId: string) => {
+  const response = await directus.request(readItem("users", userId));
+  return response;
 };
