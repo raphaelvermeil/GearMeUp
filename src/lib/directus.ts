@@ -243,6 +243,7 @@ export const getGearListings = async ({
     minPrice?: number;
     maxPrice?: number;
     user_id?: string;
+    search?: string; // Added search parameter
   };
   page?: number;
   limit?: number;
@@ -256,6 +257,16 @@ export const getGearListings = async ({
     if (filters?.maxPrice)
       filter.price = { ...filter.price, _lte: filters.maxPrice };
     if (filters?.user_id) filter.user_id = filters.user_id;
+
+
+    // Add search filter if provided
+    if (filters?.search && filters.search.trim() !== '') {
+    // Use _or to search in both title and description
+      filter._or = [
+        { title: { _contains: filters.search } },
+        { description: { _contains: filters.search } }
+      ];
+    }
 
     const response = (await directus.request(
       readItems("gear_listings", {

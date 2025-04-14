@@ -6,6 +6,7 @@ import type { TransformedGearListing } from '@/lib/directus'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
+import { set } from 'react-hook-form'
 
 const categories = [
   'Camping',
@@ -27,11 +28,15 @@ const sortOptions: { value: SortOption; label: string }[] = [
 ]
 
 export default function GearPage() {
+  // Add a new state for the search input value
+  const [searchInput, setSearchInput] = useState('')
+
   const [filters, setFilters] = useState({
     category: '',
     condition: '',
     minPrice: undefined as number | undefined,
     maxPrice: undefined as number | undefined,
+    search: ''
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [sort, setSort] = useState<SortOption>('date_created_desc')
@@ -43,22 +48,28 @@ export default function GearPage() {
     sort,
   })
 
-  // console.log('Current listings:', listings);
-  
-  // if (listings[0]?.gear_images) {
-  //   console.log('Image details:', {
-  //     id: listings[0].gear_images.id,
-  //     filename: listings[0].gear_images.filename_download,
-  //     url: listings[0].gear_images.url
-  //   });
-  // }
-
   const handleFilterChange = (key: string, value: string | number) => {
     setFilters(prev => ({
       ...prev,
       [key]: value === '' ? undefined : value
     }))
     setCurrentPage(1) // Reset to first page when filters change
+  }
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value)
+  }
+
+  // Add a new function to handle search submission
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    handleFilterChange('search', searchInput)
+  }
+
+  // Add a new function to clear the search input
+  const clearSearch = () => {
+    setSearchInput('')
+    handleFilterChange('search', '')
   }
 
   const handlePageChange = (newPage: number) => {
@@ -118,6 +129,43 @@ export default function GearPage() {
               List Your Gear
             </Link>
           )}
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-8">
+          <form onSubmit={handleSearchSubmit} className="relative">
+              <input
+                type="text"
+                placeholder="Search for gear by title or description..."
+                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-4 pl-12"
+                value={searchInput}
+                onChange={handleSearchInputChange}
+              />
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              {searchInput && (
+                <button 
+                  type="button"
+                  className="p-1 mr-2 text-gray-400 hover:text-gray-600"
+                  onClick={clearSearch}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              <button 
+                type="submit"
+                className="py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Search
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* Filters and Sort */}
@@ -236,11 +284,10 @@ export default function GearPage() {
               <button
                 key={page}
                 onClick={() => handlePageChange(page)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  currentPage === page
+                className={`px-4 py-2 rounded-lg transition-colors ${currentPage === page
                     ? 'bg-green-600 text-white'
                     : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {page}
               </button>

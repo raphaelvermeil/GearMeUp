@@ -14,6 +14,7 @@ interface UseGearListingsOptions {
     condition?: string;
     minPrice?: number;
     maxPrice?: number;
+    search?: string; // Added search parameter
   };
   page?: number;
   itemsPerPage?: number;
@@ -42,6 +43,23 @@ export function useGearListings({
           limit: itemsPerPage,
           sort,
         });
+
+
+        // If we have a search term, filter the listings client-side
+        let filteredListings = response;
+        
+        if (filters?.search && filters.search.trim() !== '') {
+          const searchTerm = filters.search.toLowerCase().trim();
+          filteredListings = response.filter(listing => 
+            listing.title.toLowerCase().includes(searchTerm) || 
+            listing.description.toLowerCase().includes(searchTerm)
+          );  
+        }
+
+
+
+
+
         setListings(response);
         setTotalItems(response.length);
         setTotalPages(Math.ceil(response.length / itemsPerPage));
