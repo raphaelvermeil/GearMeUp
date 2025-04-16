@@ -4,24 +4,51 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRentalRequests } from '@/hooks/useRentalRequests'
 import { useUserListings } from '@/hooks/useUserListings'
+import { useUpdateRentalStatus } from '@/hooks/useUpdateRentalStatus'
+import { useCreateReview } from '@/hooks/useCreateReview'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { DirectusRentalRequest } from '@/lib/directus'
+import { getOrCreateClient } from '@/lib/directus'
 import { getUser } from '@/lib/directus'
 
 export default function ProfilePage() {
   const { user } = useAuth()
   const [role, setRole] = useState<'owner' | 'renter'>('renter')
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null)
-  const { requests, loading: requestsLoading, error: requestsError } = useRentalRequests(
-    user?.id || '',
-    role
-  )
-  const { listings, loading: listingsLoading, error: listingsError } = useUserListings(user?.id || '')
+  const [reviewData, setReviewData] = useState<{
+    rating: number;
+    comment: string;
+  }>({
+    rating: 5,
+    comment: '',
+  })
 
-  console.log('Current user:', user)
-  console.log('Listings:', listings)
-  console.log('Listings error:', listingsError)
+  const { 
+    requests, 
+    loading: requestsLoading, 
+    error: requestsError,
+    updateRequestStatus,
+    refetchRequests 
+  } = useRentalRequests(user?.id || '', role)
+  
+  const { listings, loading: listingsLoading, error: listingsError } = useUserListings(user?.id || '')
+  
+  const { updateStatus, loading: updateLoading } = useUpdateRentalStatus({
+    onSuccess: () => {
+      refetchRequests();
+    }
+  });
+
+  const { submitReview, loading: reviewLoading } = useCreateReview({
+    onSuccess: () => {
+      alert('Review submitted successfully!');
+      setReviewData({ rating: 5, comment: '' });
+      refetchRequests();
+    }
+  });
+
+  
 
   if (!user) {
     return (
@@ -45,6 +72,63 @@ export default function ProfilePage() {
       ? { first_name: 'gouou', last_name: 'User' }  // Handle case where user is just an ID
       : clientRef.user;
     return `${userInfo.first_name} ${userInfo.last_name}`;
+  };
+
+  const handleStatusChange = async (requestId: string, newStatus: 'approved' | 'rejected' | 'completed') => {
+    if (confirm(`Are you sure you want to mark this request as ${newStatus}?`)) {
+      try {
+        await updateStatus(requestId, newStatus);
+        updateRequestStatus(requestId, newStatus);
+      } catch (error) {
+        console.error('Error updating status:', error);
+        alert('Failed to update request status. Please try again.');
+      }
+    }
+  };
+
+  const handleReviewSubmit = async (request: DirectusRentalRequest) => {
+    if (!reviewData.comment) {
+      alert('Please enter a comment for your review.');
+      return;
+    }
+
+    try {
+      const currentClient = await getOrCreateClient(user.id);
+
+      if (!currentClient) {
+        throw new Error('Failed to get or create client');
+      }
+
+      let reviewed;
+      if(role === 'renter') {
+        reviewed = request.owner_id.id;
+        console.log(reviewed);
+        console.log(request.owner_id.id);
+        console.log(request)
+      } else if(role === 'owner') {
+        reviewed = request.renter_id.id;
+        console.log(reviewed);
+        console.log(request.renter_id.id);
+        console.log(request)
+      }else{
+        throw new Error('Invalid role');
+      }
+
+      const reviewedClient = await getOrCreateClient(request.owner_id.user.id);
+      console.log(reviewedClient);
+      
+
+      await submitReview({
+        rental_request_id: request.id,
+        reviewer_id: currentClient.id,
+        reviewed_id: reviewedClient.id,
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+      });
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert('Failed to submit review. Please try again.');
+    }
   };
 
   return (
@@ -200,6 +284,103 @@ export default function ProfilePage() {
                             <div className="mt-4">
                               <h4 className="text-sm font-medium text-gray-900">Description</h4>
                               <p className="text-sm text-gray-500 mt-1">{request.gear_listing_id.description}</p>
+                            </div>
+                          )}
+                          
+                          {/* Status Update Section for Owners */}
+                          {role === 'owner' && request.status === 'pending' && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <h4 className="text-sm font-medium text-gray-900 mb-2">Update Request Status</h4>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(request.id, 'approved');
+                                  }}
+                                  disabled={updateLoading}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(request.id, 'rejected');
+                                  }}
+                                  disabled={updateLoading}
+                                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Mark as Completed Section for Renters */}
+                          {role === 'renter' && request.status === 'approved' && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <h4 className="text-sm font-medium text-gray-900 mb-2">Complete Rental</h4>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(request.id, 'completed');
+                                }}
+                                disabled={updateLoading}
+                                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                              >
+                                Mark as Completed
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Review Section */}
+                          {role === 'renter' && request.status === 'completed' && (
+                            <div 
+                              className="mt-4 pt-4 border-t border-gray-200"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <h4 className="text-sm font-medium text-gray-900 mb-2">Write a Review</h4>
+                              <div className="space-y-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Rating</label>
+                                  <select
+                                    value={reviewData.rating}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      setReviewData(prev => ({ ...prev, rating: parseInt(e.target.value) }));
+                                    }}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                  >
+                                    {[1, 2, 3, 4, 5].map((num) => (
+                                      <option key={num} value={num}>{num} Star{num !== 1 ? 's' : ''}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Comment</label>
+                                  <textarea
+                                    value={reviewData.comment}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      setReviewData(prev => ({ ...prev, comment: e.target.value }));
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    rows={3}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    placeholder="Write your review here..."
+                                  />
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReviewSubmit(request);
+                                  }}
+                                  disabled={reviewLoading}
+                                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                                >
+                                  Submit Review
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>

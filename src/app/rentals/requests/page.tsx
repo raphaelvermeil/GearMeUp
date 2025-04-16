@@ -1,29 +1,29 @@
 'use client'
 
 import { useState } from 'react'
-import { useRentalRequests } from '@/hooks/useRentalRequests'
+// import { useRentalRequests } from '@/hooks/useRentalRequests'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 
 export default function RentalRequestsPage() {
   const [role, setRole] = useState<'owner' | 'renter'>('renter')
   const { user } = useAuth()
-  const { requests, loading, error } = useRentalRequests(
-    user?.id || '',
-    role
-  )
+  // const { requests, loading, error } = useRentalRequests(
+  //   user?.id || '',
+  //   role
+  // )
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  )
+  // if (loading) return (
+  //   <div className="flex items-center justify-center min-h-screen">
+  //     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  //   </div>
+  // )
 
-  if (error) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-red-500">Error: {error.message}</div>
-    </div>
-  )
+  // if (error) return (
+  //   <div className="flex items-center justify-center min-h-screen">
+  //     <div className="text-red-500">Error: {error.message}</div>
+  //   </div>
+  // )
 
   return (
     <div className="container mx-auto px-4 py-8">
