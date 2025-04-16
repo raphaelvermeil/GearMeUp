@@ -714,7 +714,7 @@ export const createConversation = async (data: {
 export const getUserConversations = async (userId: string) => {
   try {
     const client = await getOrCreateClient(userId);
-    const response = (await directus.request(
+    const response = await directus.request(
       readItems("conversations", {
         filter: {
           _or: [{ user_1: { id: client.id } }, { user_2: { id: client.id } }],
