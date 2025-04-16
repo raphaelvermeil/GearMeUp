@@ -16,7 +16,7 @@ import {
 } from '@/lib/directus'
 import Link from 'next/link'
 import Image from 'next/image'
-import { format } from 'date-fns'
+import { format, set } from 'date-fns'
 import { DirectusClient } from '@directus/sdk';
 
 
@@ -30,7 +30,7 @@ export default function Conversations() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [sending, setSending] = useState(false)
-    
+
     // Fetch user conversations when component mounts
     useEffect(() => {
         const fetchClient = async () => {
@@ -38,7 +38,6 @@ export default function Conversations() {
 
             try {
                 const retrievedClient = await getOrCreateClient(user.id)
-                console.log('Client retrieved:', retrievedClient)
                 setClient(retrievedClient as DirectusClientUser) // Ensure type compatibility
             } catch (err) {
                 console.error('Failed to fetch client:', err)
@@ -72,10 +71,13 @@ export default function Conversations() {
     // Fetch messages when selected conversation changes
     useEffect(() => {
         const fetchMessages = async () => {
-            if (!selectedConversation) return
+            if (!selectedConversation){
+                console.log('no selected conv when fetching');
+                return}
 
             try {
                 const conversationMessages = await getConversationMessages(selectedConversation.id)
+                console.log('Fetched messages:', conversationMessages)
                 setMessages(conversationMessages)
 
                 // Scroll to bottom of messages
@@ -97,13 +99,16 @@ export default function Conversations() {
     const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
 
-        if (!newMessage.trim() || !selectedConversation || !user) return
+        if (!newMessage.trim() || !selectedConversation || !client) return
 
         try {
             setSending(true)
+            console.log('Sending message:', newMessage.trim())
+            console.log('Selected conversation:', selectedConversation.id)
+            console.log('Client ID:', client.id)    
             await sendMessage({
                 conversation: selectedConversation.id,
-                sender: user.id,
+                sender: client.id,
                 message: newMessage.trim()
             })
 
@@ -213,13 +218,12 @@ export default function Conversations() {
                                     <div>
                                         <h3 className="font-semibold text-gray-900">
                                             {getOtherUser(selectedConversation)
-                                                ? `${getOtherUser(selectedConversation)?.user.first_name ?? ''} ${getOtherUser(selectedConversation)?.user.last_name ?? ''}`
-                                                : 'Unknown User'
+                                                ? `${getOtherUser(selectedConversation)?.user.first_name ?? ''} ${getOtherUser(selectedConversation)?.user.last_name ?? ''}` : 'Unknown User'
                                             }
                                         </h3>
                                         <p className="text-sm text-gray-600">
                                             {selectedConversation.gear_listing_id
-                                                ? `Re: ${selectedConversation.gear_listing_id.title}`
+                                                ? `About: ${selectedConversation.gear_listing_id.title}`
                                                 : 'No gear listing'
                                             }
                                         </p>
@@ -255,14 +259,14 @@ export default function Conversations() {
                                                     >
                                                         <div
                                                             className={`max-w-[75%] px-4 py-3 rounded-lg ${isCurrentUser
-                                                                    ? 'bg-green-600 text-white'
-                                                                    : 'bg-white border border-gray-200 text-gray-800'
+                                                                ? 'bg-green-600 text-white'
+                                                                : 'bg-white border border-gray-200 text-gray-800'
                                                                 }`}
                                                         >
-                                                            <p>{message.content}</p>
-                                                            {/* <p className={`text-xs mt-1 ${isCurrentUser ? 'text-green-200' : 'text-gray-500'}`}>
-                                {format(new Date(message.created_at), 'MMM d, h:mm a')}
-                              </p> */}
+                                                            <p>{message.message}</p>
+                                                            <p className={`text-xs mt-1 ${isCurrentUser ? 'text-green-200' : 'text-gray-500'}`}>
+                                                                {format(new Date(message.date_created), 'MMM d, h:mm a')}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 )

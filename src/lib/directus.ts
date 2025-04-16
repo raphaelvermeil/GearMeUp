@@ -292,13 +292,13 @@ export const getGearListings = async ({
           sort === "date_created_desc"
             ? "-date_created"
             : sort === "date_created_asc"
-            ? "date_created"
-            : sort === "price_asc"
-            ? "price"
-            : "-price",
+              ? "date_created"
+              : sort === "price_asc"
+                ? "price"
+                : "-price",
       })
     )) as DirectusGearListing[];
-console.log("response hello 123", response);
+    console.log("response hello 123", response);
     // Transform the response to match our TransformedGearListing interface
     const transformedListings = response.map((listing) => ({
       id: listing.id,
@@ -314,15 +314,15 @@ console.log("response hello 123", response);
       })),
       user_id: listing.user_id
         ? {
-            id: listing.user_id.id,
-            user: listing.user_id.user
-              ? {
-                  id: listing.user_id.user.id,
-                  first_name: listing.user_id.user.first_name,
-                  last_name: listing.user_id.user.last_name,
-                }
-              : null,
-          }
+          id: listing.user_id.id,
+          user: listing.user_id.user
+            ? {
+              id: listing.user_id.user.id,
+              first_name: listing.user_id.user.first_name,
+              last_name: listing.user_id.user.last_name,
+            }
+            : null,
+        }
         : null,
     }));
 
@@ -365,15 +365,15 @@ export const getGearListing = async (id: string) => {
       })),
       user_id: response.user_id
         ? {
-            id: response.user_id.id,
-            user: response.user_id.user
-              ? {
-                  id: response.user_id.user.id,
-                  first_name: response.user_id.user.first_name,
-                  last_name: response.user_id.user.last_name,
-                }
-              : null,
-          }
+          id: response.user_id.id,
+          user: response.user_id.user
+            ? {
+              id: response.user_id.user.id,
+              first_name: response.user_id.user.first_name,
+              last_name: response.user_id.user.last_name,
+            }
+            : null,
+        }
         : null,
     };
 
@@ -662,9 +662,17 @@ export interface DirectusConversation {
 export interface DirectusMessage {
   id: string;
   conversation: DirectusConversation;
-  sender: DirectusUser;
-  content: string;
-  created_at: string;
+  sender: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+  };
+  message: string;
+  date_created: string;
 }
 
 // Create a conversation
@@ -701,38 +709,10 @@ export const getUserConversations = async (userId: string) => {
           "user_1.user.*",
           "user_2.user.*",
           "gear_listing_id.*",
-          ],
+        ],
         sort: ["-gear_listing_id.id"]
       })
     ) as DirectusConversation[];
-    // const transformedResponse = response.map((conversation) => ({ 
-    //   ...conversation,
-    //   // user: {
-    //   //   id: string;
-    //   //   first_name: string;
-    //   //   last_name: string;
-    //   //   email: string;
-    //   // };
-      
-    //   user_1: {
-    //     id: conversation.user_1.id,
-    //     user: {
-    //       id: conversation.user_1.user.id,
-    //       first_name: conversation.user_1.user.first_name,
-    //       last_name: conversation.user_1.user.last_name,
-    //       email: conversation.user_1.user.email,
-    //     },
-    //   },
-    //   user_2: {
-    //     id: conversation.user_1.id,
-    //     user: {
-    //       id: conversation.user_1.user.id,
-    //       first_name: conversation.user_1.user.first_name,
-    //       last_name: conversation.user_1.user.last_name,
-    //       email: conversation.user_1.user.email,
-    //     },
-    //   },
-    // }));   
     console.log("User conversations response:", response);
     return response;
   } catch (error) {
@@ -771,10 +751,21 @@ export const getConversationMessages = async (conversationId: string) => {
         filter: {
           conversation: conversationId
         },
-        fields: ["*", "sender.*"],
-        //sort: ["created_at"]
+        fields: [
+          "id", // Message ID
+          "conversation.id", // Conversation ID
+          "sender.id", // Sender ID
+          "sender.user.id", // Sender's user ID
+          "sender.user.first_name", // Sender's first name
+          "sender.user.last_name", // Sender's last name
+          "sender.user.email", // Sender's email
+          "message", // Message content
+          "date_created" // Message creation timestamp
+        ],
+        sort: ["date_created"]
       })
-    );
+    ) as DirectusMessage[];
+    console.log("Conversation messages response:", response);
     return response as DirectusMessage[];
   } catch (error) {
     console.error("Error getting conversation messages:", error);
@@ -816,7 +807,7 @@ export const findConversation = async (user1Id: string, user2Id: string, gearLis
         limit: 1
       })
     );
-    
+
     return response && response.length > 0 ? response[0] as DirectusConversation : null;
   } catch (error) {
     console.error("Error finding conversation:", error);
