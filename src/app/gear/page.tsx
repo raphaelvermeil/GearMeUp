@@ -138,7 +138,7 @@ export default function GearPage() {
               <input
                 type="text"
                 placeholder="Search for gear by title or description..."
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-4 pl-12"
+                className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-4 pl-12"
                 value={searchInput}
                 onChange={handleSearchInputChange}
               />
@@ -174,7 +174,7 @@ export default function GearPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter & Sort</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <select
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
               value={filters.category || ''}
               onChange={(e) => handleFilterChange('category', e.target.value)}
             >
@@ -185,7 +185,7 @@ export default function GearPage() {
             </select>
 
             <select
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
               value={filters.condition || ''}
               onChange={(e) => handleFilterChange('condition', e.target.value)}
             >
@@ -198,7 +198,7 @@ export default function GearPage() {
             <input
               type="number"
               placeholder="Min Price"
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
               value={filters.minPrice || ''}
               onChange={(e) => handleFilterChange('minPrice', e.target.value ? Number(e.target.value) : '')}
             />
@@ -206,13 +206,13 @@ export default function GearPage() {
             <input
               type="number"
               placeholder="Max Price"
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
               value={filters.maxPrice || ''}
               onChange={(e) => handleFilterChange('maxPrice', e.target.value ? Number(e.target.value) : '')}
             />
 
             <select
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
             >

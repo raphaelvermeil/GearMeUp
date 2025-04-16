@@ -264,13 +264,12 @@ export const getGearListings = async ({
       filter.price = { ...filter.price, _lte: filters.maxPrice };
     if (filters?.user_id) filter.user_id = filters.user_id;
 
-
     // Add search filter if provided
-    if (filters?.search && filters.search.trim() !== '') {
-    // Use _or to search in both title and description
+    if (filters?.search && filters.search.trim() !== "") {
+      // Use _or to search in both title and description
       filter._or = [
         { title: { _contains: filters.search } },
-        { description: { _contains: filters.search } }
+        { description: { _contains: filters.search } },
       ];
     }
 
@@ -522,7 +521,7 @@ export const getRentalRequests = async (
 };
 
 // Review functions
-export const createReview = async (reviewData: {
+export const createReview = async (data: {
   rental_request_id: string;
   reviewer_id: string;
   reviewed_id: string;
@@ -530,7 +529,7 @@ export const createReview = async (reviewData: {
   comment: string;
 }) => {
   try {
-    const response = await directus.request(createItem("reviews", reviewData));
+    const response = await directus.request(createItem("reviews", data));
     return response as DirectusReview;
   } catch (error) {
     console.error("Error creating review:", error);
@@ -617,6 +616,23 @@ export const getCurrentClient = async () => {
 export const getUser = async (userId: string) => {
   const response = await directus.request(readItem("users", userId));
   return response;
+};
+
+export const updateRentalRequestStatus = async (
+  requestId: string,
+  status: "approved" | "rejected" | "completed"
+) => {
+  try {
+    const response = await directus.request(
+      updateItem("rental_requests", requestId, {
+        status,
+      })
+    );
+    return response as DirectusRentalRequest;
+  } catch (error) {
+    console.error("Error updating rental request status:", error);
+    throw error;
+  }
 };
 
 export interface DirectusConversation {
