@@ -172,9 +172,15 @@ export default function GearDetailPage() {
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <h2 className="text-xl font-semibold mb-2">Owner</h2>
             {listing.user_id?.user ? (
-              <p className="text-gray-600">
-                {listing.user_id.user.first_name} {listing.user_id.user.last_name}
-              </p>
+              <div className="mt-4">
+                <Link 
+                  href={`/users/${listing.user_id.user.id}`}
+                  className="text-green-600 hover:text-green-700 flex items-center space-x-2"
+                >
+                  <span>{listing.user_id.user.first_name} {listing.user_id.user.last_name}</span>
+                  <span className="text-sm">View Profile →</span>
+                </Link>
+              </div>
             ) : (
               <p className="text-gray-600">Unknown user</p>
             )}
