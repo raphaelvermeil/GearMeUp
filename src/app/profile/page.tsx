@@ -219,12 +219,18 @@ export default function ProfilePage() {
                           </p>
                           <p className="text-sm text-gray-500">
                             {role === 'owner' ? 'Requested by: ' : 'Owner: '}
-                            <span className="font-medium">
+                            <Link
+                              href={`/users/${role === 'owner' 
+                                ? request.renter_id.user.id
+                                : request.owner_id.user.id}`}
+                              className="font-medium hover:text-green-600"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {role === 'owner' 
                                 ? `${request.renter_id.user.first_name} ${request.renter_id.user.last_name}`
                                 : `${request.owner_id.user.first_name} ${request.owner_id.user.last_name}`
                               }
-                            </span>
+                            </Link>
                           </p>
                           <p className="text-sm text-gray-500">
                             Dates: {new Date(request.start_date).toLocaleDateString()} -{' '}

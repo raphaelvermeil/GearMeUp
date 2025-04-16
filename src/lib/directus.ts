@@ -298,7 +298,7 @@ export const getGearListings = async ({
             : "-price",
       })
     )) as DirectusGearListing[];
-console.log("response hello 123", response);
+    console.log("response hello 123", response);
     // Transform the response to match our TransformedGearListing interface
     const transformedListings = response.map((listing) => ({
       id: listing.id,
@@ -573,6 +573,7 @@ export const getOrCreateClient = async (userId: string) => {
     const existingClients = await directus.request(
       readItems("clients", {
         filter: { user: userId },
+        fields: ["*", "user.*"],
         limit: 1,
       })
     );
@@ -614,8 +615,27 @@ export const getCurrentClient = async () => {
 };
 
 export const getUser = async (userId: string) => {
-  const response = await directus.request(readItem("users", userId));
-  return response;
+  try {
+    const response = await directus.request(
+      readItem("directus_users", userId, {
+        fields: [
+          "id",
+          "email",
+          "first_name",
+          "last_name",
+          "role",
+          "status",
+          "created_at",
+          "updated_at",
+        ],
+      })
+    );
+    console.log("user fetched on the getUser function", response);
+    return response as DirectusUser;
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    throw new Error("User not found");
+  }
 };
 
 export const updateRentalRequestStatus = async (
@@ -686,13 +706,10 @@ export const createConversation = async (data: {
 export const getUserConversations = async (userId: string) => {
   try {
     const client = await getOrCreateClient(userId);
-    const response = await directus.request(
+    const response = (await directus.request(
       readItems("conversations", {
         filter: {
-          _or: [
-            { user_1: { id: client.id } },
-            { user_2: { id: client.id } }
-          ]
+          _or: [{ user_1: { id: client.id } }, { user_2: { id: client.id } }],
         },
         fields: [
           "*",
@@ -701,11 +718,11 @@ export const getUserConversations = async (userId: string) => {
           "user_1.user.*",
           "user_2.user.*",
           "gear_listing_id.*",
-          ],
-        sort: ["-gear_listing_id.id"]
+        ],
+        sort: ["-gear_listing_id.id"],
       })
-    ) as DirectusConversation[];
-    // const transformedResponse = response.map((conversation) => ({ 
+    )) as DirectusConversation[];
+    // const transformedResponse = response.map((conversation) => ({
     //   ...conversation,
     //   // user: {
     //   //   id: string;
@@ -713,7 +730,7 @@ export const getUserConversations = async (userId: string) => {
     //   //   last_name: string;
     //   //   email: string;
     //   // };
-      
+
     //   user_1: {
     //     id: conversation.user_1.id,
     //     user: {
@@ -732,7 +749,7 @@ export const getUserConversations = async (userId: string) => {
     //       email: conversation.user_1.user.email,
     //     },
     //   },
-    // }));   
+    // }));
     console.log("User conversations response:", response);
     return response;
   } catch (error) {
@@ -752,8 +769,8 @@ export const getConversation = async (conversationId: string) => {
           "user_2.*",
           "user_1.user.*",
           "user_2.user.*",
-          "gear_listing_id.*"
-        ]
+          "gear_listing_id.*",
+        ],
       })
     );
     return response as DirectusConversation;
@@ -769,7 +786,7 @@ export const getConversationMessages = async (conversationId: string) => {
     const response = await directus.request(
       readItems("messages", {
         filter: {
-          conversation: conversationId
+          conversation: conversationId,
         },
         fields: ["*", "sender.*"],
         //sort: ["created_at"]
@@ -798,7 +815,11 @@ export const sendMessage = async (data: {
 };
 
 // Find existing conversation between users for a specific gear listing
-export const findConversation = async (user1Id: string, user2Id: string, gearListingId: string) => {
+export const findConversation = async (
+  user1Id: string,
+  user2Id: string,
+  gearListingId: string
+) => {
   try {
     const response = await directus.request(
       readItems("conversations", {
@@ -807,17 +828,19 @@ export const findConversation = async (user1Id: string, user2Id: string, gearLis
             {
               _or: [
                 { user_1: user1Id, user_2: user2Id },
-                { user_1: user2Id, user_2: user1Id }
-              ]
+                { user_1: user2Id, user_2: user1Id },
+              ],
             },
-            { gear_listing: gearListingId }
-          ]
+            { gear_listing: gearListingId },
+          ],
         },
-        limit: 1
+        limit: 1,
       })
     );
-    
-    return response && response.length > 0 ? response[0] as DirectusConversation : null;
+
+    return response && response.length > 0
+      ? (response[0] as DirectusConversation)
+      : null;
   } catch (error) {
     console.error("Error finding conversation:", error);
     throw error;
