@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getGearListing, getAssetURL, getOrCreateClient } from '@/lib/directus'
+import { getGearListing, getAssetURL, getOrCreateClient, createConversation, sendMessage } from '@/lib/directus'
 import { useAuth } from '@/contexts/AuthContext'
 import type { TransformedGearListing } from '@/lib/directus'
 import Link from 'next/link'
@@ -10,6 +10,7 @@ import Image from 'next/image'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { useRentalRequest } from '@/hooks/useRentalRequest'
+
 
 export default function GearDetailPage() {
   const { user } = useAuth()
@@ -57,30 +58,22 @@ export default function GearDetailPage() {
     }
 
     const clientRenter = await getOrCreateClient(user.id)
-      if (!clientRenter) {
-        throw new Error('Failed to get or create client renter')
-      }
+    if (!clientRenter) {
+      throw new Error('Failed to get or create client renter')
+    }
 
     if (!listing.user_id) {
       throw new Error('Gear listing has no owner')
     }
 
-    // const clientOwner = await getOrCreateClient(listing.user_id.id)
-    //   if (!clientOwner) {
-    //     throw new Error('Failed to get or create client owner')
-    //   }
 
-    console.log(clientRenter)
-
-
-
-    await submitRequest({
+    const rentalRequest = await submitRequest({
       gear_listing_id: listing.id,
       renter_id: clientRenter.id,
       owner_id: listing.user_id.id,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
-      message,
+      message: message?.trim(),
     })
   }
 
@@ -127,7 +120,7 @@ export default function GearDetailPage() {
               />
             </div>
           )}
-          
+
           {/* Thumbnails */}
           {listing.gear_images && listing.gear_images.length > 1 && (
             <div className="grid grid-cols-5 gap-2">
@@ -135,9 +128,8 @@ export default function GearDetailPage() {
                 <button
                   key={image.id}
                   onClick={() => setSelectedImageIndex(index)}
-                  className={`relative rounded-lg overflow-hidden aspect-square ${
-                    selectedImageIndex === index ? 'ring-2 ring-green-500' : ''
-                  }`}
+                  className={`relative rounded-lg overflow-hidden aspect-square ${selectedImageIndex === index ? 'ring-2 ring-green-500' : ''
+                    }`}
                 >
                   <Image
                     src={image.url}
@@ -191,7 +183,7 @@ export default function GearDetailPage() {
           {/* Rental Request Form */}
           <div className="bg-gray-50 p-6 rounded-lg">
             <h2 className="text-xl font-semibold mb-4">Request to Rent</h2>
-            
+
             {submitError && (
               <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
                 <strong className="font-bold">Error: </strong>

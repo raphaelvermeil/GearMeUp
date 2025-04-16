@@ -1,4 +1,5 @@
 'use client'
+import { useRouter } from 'next/navigation';
 
 import { useState } from 'react'
 import { useGearListings, type SortOption } from '@/hooks/useGearListings'

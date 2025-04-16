@@ -13,6 +13,7 @@ import {
   readMe,
   uploadFiles,
 } from "@directus/sdk";
+import { get } from "http";
 
 // Use the correct Directus URL directly
 const DIRECTUS_URL = "https://creative-blini-b15912.netlify.app";
@@ -34,9 +35,14 @@ export interface DirectusFile {
   url: string;
 }
 
-export interface DirectusClient {
+export interface DirectusClientUser {
   id: string;
-  user_id: string;
+  user: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -293,7 +299,7 @@ export const getGearListings = async ({
             : "-price",
       })
     )) as DirectusGearListing[];
-
+console.log("response hello 123", response);
     // Transform the response to match our TransformedGearListing interface
     const transformedListings = response.map((listing) => ({
       id: listing.id,
@@ -573,7 +579,7 @@ export const getOrCreateClient = async (userId: string) => {
     );
 
     if (existingClients && existingClients.length > 0) {
-      return existingClients[0];
+      return existingClients[0] as DirectusClientUser;
     }
 
     // If no client exists, create one
@@ -583,7 +589,7 @@ export const getOrCreateClient = async (userId: string) => {
       })
     );
 
-    return newClient;
+    return newClient as DirectusClientUser;
   } catch (error) {
     console.error("Error getting or creating client:", error);
     if (error instanceof Error) {
@@ -611,4 +617,193 @@ export const getCurrentClient = async () => {
 export const getUser = async (userId: string) => {
   const response = await directus.request(readItem("users", userId));
   return response;
+};
+
+export interface DirectusConversation {
+  id: string;
+  user_1: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+  };
+  user_2: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+  };
+  gear_listing_id: DirectusGearListing;
+  // created_at: string;
+}
+
+export interface DirectusMessage {
+  id: string;
+  conversation: DirectusConversation;
+  sender: DirectusUser;
+  content: string;
+  created_at: string;
+}
+
+// Create a conversation
+export const createConversation = async (data: {
+  user_1: string;
+  user_2: string;
+  gear_listing_id: string;
+}) => {
+  try {
+    const response = await directus.request(createItem("conversations", data));
+    return response as DirectusConversation;
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+    throw error;
+  }
+};
+
+// Get conversations for a user
+export const getUserConversations = async (userId: string) => {
+  try {
+    const client = await getOrCreateClient(userId);
+    const response = await directus.request(
+      readItems("conversations", {
+        filter: {
+          _or: [
+            { user_1: { id: client.id } },
+            { user_2: { id: client.id } }
+          ]
+        },
+        fields: [
+          "*",
+          "user_1.*",
+          "user_2.*",
+          "user_1.user.*",
+          "user_2.user.*",
+          "gear_listing_id.*",
+          ],
+        sort: ["-gear_listing_id.id"]
+      })
+    ) as DirectusConversation[];
+    // const transformedResponse = response.map((conversation) => ({ 
+    //   ...conversation,
+    //   // user: {
+    //   //   id: string;
+    //   //   first_name: string;
+    //   //   last_name: string;
+    //   //   email: string;
+    //   // };
+      
+    //   user_1: {
+    //     id: conversation.user_1.id,
+    //     user: {
+    //       id: conversation.user_1.user.id,
+    //       first_name: conversation.user_1.user.first_name,
+    //       last_name: conversation.user_1.user.last_name,
+    //       email: conversation.user_1.user.email,
+    //     },
+    //   },
+    //   user_2: {
+    //     id: conversation.user_1.id,
+    //     user: {
+    //       id: conversation.user_1.user.id,
+    //       first_name: conversation.user_1.user.first_name,
+    //       last_name: conversation.user_1.user.last_name,
+    //       email: conversation.user_1.user.email,
+    //     },
+    //   },
+    // }));   
+    console.log("User conversations response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error getting user conversations:", error);
+    throw error;
+  }
+};
+
+// Get a specific conversation
+export const getConversation = async (conversationId: string) => {
+  try {
+    const response = await directus.request(
+      readItem("conversations", conversationId, {
+        fields: [
+          "*",
+          "user_1.*",
+          "user_2.*",
+          "user_1.user.*",
+          "user_2.user.*",
+          "gear_listing_id.*"
+        ]
+      })
+    );
+    return response as DirectusConversation;
+  } catch (error) {
+    console.error("Error getting conversation:", error);
+    throw error;
+  }
+};
+
+// Get conversation messages
+export const getConversationMessages = async (conversationId: string) => {
+  try {
+    const response = await directus.request(
+      readItems("messages", {
+        filter: {
+          conversation: conversationId
+        },
+        fields: ["*", "sender.*"],
+        //sort: ["created_at"]
+      })
+    );
+    return response as DirectusMessage[];
+  } catch (error) {
+    console.error("Error getting conversation messages:", error);
+    throw error;
+  }
+};
+
+// Send a message
+export const sendMessage = async (data: {
+  conversation: string;
+  sender: string;
+  message: string;
+}) => {
+  try {
+    const response = await directus.request(createItem("messages", data));
+    return response as DirectusMessage;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+// Find existing conversation between users for a specific gear listing
+export const findConversation = async (user1Id: string, user2Id: string, gearListingId: string) => {
+  try {
+    const response = await directus.request(
+      readItems("conversations", {
+        filter: {
+          _and: [
+            {
+              _or: [
+                { user_1: user1Id, user_2: user2Id },
+                { user_1: user2Id, user_2: user1Id }
+              ]
+            },
+            { gear_listing: gearListingId }
+          ]
+        },
+        limit: 1
+      })
+    );
+    
+    return response && response.length > 0 ? response[0] as DirectusConversation : null;
+  } catch (error) {
+    console.error("Error finding conversation:", error);
+    throw error;
+  }
 };
