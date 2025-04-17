@@ -11,9 +11,11 @@ import Image from 'next/image'
 import type { DirectusRentalRequest } from '@/lib/directus'
 import { getOrCreateClient } from '@/lib/directus'
 import { getUser } from '@/lib/directus'
+import { useClient } from '@/hooks/useClient'
 
 export default function ProfilePage() {
   const { user } = useAuth()
+  const { client, loading: clientLoading, error: clientError } = useClient(user?.id || '')
   const [role, setRole] = useState<'owner' | 'renter'>('renter')
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null)
   const [reviewData, setReviewData] = useState<{
@@ -30,7 +32,7 @@ export default function ProfilePage() {
     error: requestsError,
     updateRequestStatus,
     refetchRequests 
-  } = useRentalRequests(user?.id || '', role)
+  } = useRentalRequests(client?.id || '', role)
   
   const { listings, loading: listingsLoading, error: listingsError } = useUserListings(user?.id || '')
   
@@ -113,15 +115,12 @@ export default function ProfilePage() {
       }else{
         throw new Error('Invalid role');
       }
-
-      const reviewedClient = await getOrCreateClient(request.owner_id.user.id);
-      console.log(reviewedClient);
       
 
       await submitReview({
         rental_request_id: request.id,
         reviewer_id: currentClient.id,
-        reviewed_id: reviewedClient.id,
+        reviewed_id: reviewed,
         rating: reviewData.rating,
         comment: reviewData.comment,
       });
