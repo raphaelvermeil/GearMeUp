@@ -18,11 +18,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { format, set } from 'date-fns'
 import { DirectusClient } from '@directus/sdk';
-
+import { useClient } from '@/hooks/useClient';
 
 export default function Conversations() {
     const { user } = useAuth()
-    const [client, setClient] = useState<DirectusClientUser | null>(null) // Add client state
+     // Add client state
     const [conversations, setConversations] = useState<DirectusConversation[]>([])
     const [selectedConversation, setSelectedConversation] = useState<DirectusConversation | null>(null)
     const [messages, setMessages] = useState<DirectusMessage[]>([])
@@ -31,20 +31,11 @@ export default function Conversations() {
     const [error, setError] = useState<string | null>(null)
     const [sending, setSending] = useState(false)
 
+    const { client, loading: clientLoading, error: clientError } = useClient(user?.id || '')
+
     // Fetch user conversations when component mounts
     useEffect(() => {
-        const fetchClient = async () => {
-            if (!user?.id) return // Ensure user.id is not null
-
-            try {
-                const retrievedClient = await getOrCreateClient(user.id)
-                setClient(retrievedClient as DirectusClientUser) // Ensure type compatibility
-            } catch (err) {
-                console.error('Failed to fetch client:', err)
-                setError('Failed to retrieve client. Please try again later.')
-            }
-        }
-        fetchClient()
+        
         const fetchConversations = async () => {
             if (!user?.id) return
 
