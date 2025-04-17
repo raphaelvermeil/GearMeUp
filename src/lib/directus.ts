@@ -124,8 +124,23 @@ export interface DirectusRentalRequest {
 export interface DirectusReview {
   id: string;
   rental_request_id: DirectusRentalRequest;
-  reviewer_id: DirectusUser;
-  reviewed_id: DirectusUser;
+  reviewer_id: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+  };
+  reviewed_id: {
+    id: string;
+    user: {
+      id: string;
+      first_name: string;
+      last_name: string;
+    };
+  };
   rating: number;
   comment: string;
 }
@@ -170,6 +185,7 @@ export const register = async (
 ) => {
   try {
     // Create the user
+
     const userResponse = await directus.request(
       createUser({
         email,
@@ -292,10 +308,10 @@ export const getGearListings = async ({
           sort === "date_created_desc"
             ? "-date_created"
             : sort === "date_created_asc"
-              ? "date_created"
-              : sort === "price_asc"
-                ? "price"
-                : "-price",
+            ? "date_created"
+            : sort === "price_asc"
+            ? "price"
+            : "-price",
       })
     )) as DirectusGearListing[];
     console.log("response hello 123", response);
@@ -314,15 +330,15 @@ export const getGearListings = async ({
       })),
       user_id: listing.user_id
         ? {
-          id: listing.user_id.id,
-          user: listing.user_id.user
-            ? {
-              id: listing.user_id.user.id,
-              first_name: listing.user_id.user.first_name,
-              last_name: listing.user_id.user.last_name,
-            }
-            : null,
-        }
+            id: listing.user_id.id,
+            user: listing.user_id.user
+              ? {
+                  id: listing.user_id.user.id,
+                  first_name: listing.user_id.user.first_name,
+                  last_name: listing.user_id.user.last_name,
+                }
+              : null,
+          }
         : null,
     }));
 
@@ -365,15 +381,15 @@ export const getGearListing = async (id: string) => {
       })),
       user_id: response.user_id
         ? {
-          id: response.user_id.id,
-          user: response.user_id.user
-            ? {
-              id: response.user_id.user.id,
-              first_name: response.user_id.user.first_name,
-              last_name: response.user_id.user.last_name,
-            }
-            : null,
-        }
+            id: response.user_id.id,
+            user: response.user_id.user
+              ? {
+                  id: response.user_id.user.id,
+                  first_name: response.user_id.user.first_name,
+                  last_name: response.user_id.user.last_name,
+                }
+              : null,
+          }
         : null,
     };
 
@@ -543,13 +559,12 @@ export const getReviews = async (userId: string) => {
       readItems("reviews", {
         filter: { reviewed_id: userId },
         fields: ["*", "reviewer_id.*"],
-        meta: "total_count",
       })
-    )) as unknown as DirectusResponse<DirectusReview>;
+    )) as unknown as DirectusReview[];
+    console.log("Backend response of getReviews: ", response);
 
     return {
-      data: response.data,
-      totalItems: response.meta?.total_count ?? 0,
+      response,
     };
   } catch (error) {
     console.error("Error fetching reviews:", error);
@@ -714,7 +729,7 @@ export const createConversation = async (data: {
 export const getUserConversations = async (userId: string) => {
   try {
     const client = await getOrCreateClient(userId);
-    const response = await directus.request(
+    const response = (await directus.request(
       readItems("conversations", {
         filter: {
           _or: [{ user_1: { id: client.id } }, { user_2: { id: client.id } }],
@@ -737,11 +752,11 @@ export const getUserConversations = async (userId: string) => {
           */
           "user_2.user.*",
           "gear_listing_id.*",
-          ],
-        sort: ["-gear_listing_id.id"]
+        ],
+        sort: ["-gear_listing_id.id"],
       })
-    ) as DirectusConversation[];
-    
+    )) as DirectusConversation[];
+
     console.log("User conversations response:", response);
     return response;
   } catch (error) {
@@ -775,7 +790,7 @@ export const getConversation = async (conversationId: string) => {
 // Get conversation messages
 export const getConversationMessages = async (conversationId: string) => {
   try {
-    const response = await directus.request(
+    const response = (await directus.request(
       readItems("messages", {
         filter: {
           conversation: conversationId,
@@ -789,11 +804,11 @@ export const getConversationMessages = async (conversationId: string) => {
           "sender.user.last_name", // Sender's last name
           "sender.user.email", // Sender's email
           "message", // Message content
-          "date_created" // Message creation timestamp
+          "date_created", // Message creation timestamp
         ],
-        sort: ["date_created"]
+        sort: ["date_created"],
       })
-    ) as DirectusMessage[];
+    )) as DirectusMessage[];
     console.log("Conversation messages response:", response);
     return response as DirectusMessage[];
   } catch (error) {
@@ -840,8 +855,10 @@ export const findConversation = async (
         limit: 1,
       })
     );
-    
-    return response && response.length > 0 ? response[0] as DirectusConversation : null;
+
+    return response && response.length > 0
+      ? (response[0] as DirectusConversation)
+      : null;
   } catch (error) {
     console.error("Error finding conversation:", error);
     throw error;

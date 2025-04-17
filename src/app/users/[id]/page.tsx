@@ -5,11 +5,151 @@ import { useParams } from 'next/navigation'
 import { getOrCreateClient, DirectusUser, DirectusClientUser } from '@/lib/directus'
 import { useGearListings } from '@/hooks/useGearListings'
 import { useReviews } from '@/hooks/useReviews'
+import { useRentalRequests } from '@/hooks/useRentalRequests'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import Image from 'next/image'
 
+// Reviews component that only renders when we have a clientId
+function ReviewsSection({ clientId }: { clientId: string }) {
+  const {
+    reviews,
+    loading: reviewsLoading,
+    error: reviewsError
+  } = useReviews({
+    userId: clientId
+  })
+
+  console.log("reviews in the user profile page", reviews)
+  if (reviewsLoading) {
+    return <div>Loading reviews...</div>
+  }
+
+  if (reviewsError) {
+    return <div className="text-red-500">Error loading reviews: {reviewsError.message}</div>
+  }
+
+  // Calculate average rating
+  const averageRating = reviews && reviews.length > 0
+    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
+    : 0
+
+  return (
+    <>
+      <div className="flex items-center mt-2">
+        <span className="text-yellow-400 mr-1">★</span>
+        <span>{averageRating.toFixed(1)}</span>
+        <span className="text-gray-500 ml-1">({reviews?.length || 0} reviews)</span>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4">Reviews</h2>
+        {reviews && reviews.length > 0 ? (
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Link href={`/users/${review.reviewer_id.id}`}>
+                      <span className="font-medium hover:text-green-600">
+                        {review.reviewer_id.user.first_name} {review.reviewer_id.user.last_name}
+                      </span>
+                    </Link>
+                    <div className="flex items-center">
+                      <span className="text-yellow-400">{'★'.repeat(review.rating)}</span>
+                      <span className="text-gray-300">{'★'.repeat(5 - review.rating)}</span>
+                    </div>
+                  </div>
+                  <span className="text-gray-500 text-sm">
+                    {new Date().toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-gray-600">{review.comment}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500">No reviews yet</p>
+        )}
+      </div>
+    </>
+  )
+}
+
+// Rental Requests component that only shows for the logged-in user's own profile
+function RentalRequestsSection({ userId }: { userId: string }) {
+  const [role, setRole] = useState<'owner' | 'renter'>('renter')
+  const { 
+    requests, 
+    loading: requestsLoading, 
+    error: requestsError,
+    updateRequestStatus,
+    refetchRequests 
+  } = useRentalRequests(userId, role)
+
+  if (requestsLoading) {
+    return <div>Loading rental requests...</div>
+  }
+
+  if (requestsError) {
+    return <div className="text-red-500">Error loading rental requests: {requestsError.message}</div>
+  }
+
+  return (
+    <div className="mt-8">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">Rental Requests</h2>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setRole('owner')}
+            className={`px-4 py-2 rounded ${role === 'owner' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}
+          >
+            As Owner
+          </button>
+          <button
+            onClick={() => setRole('renter')}
+            className={`px-4 py-2 rounded ${role === 'renter' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}
+          >
+            As Renter
+          </button>
+        </div>
+      </div>
+      
+      {requests && requests.length > 0 ? (
+        <div className="space-y-4">
+          {requests.map((request) => (
+            <div key={request.id} className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-semibold">{request.gear_listing_id.title}</h3>
+                  <p className="text-gray-600">
+                    {role === 'owner' ? 'Renter' : 'Owner'}: {role === 'owner' 
+                      ? `${request.renter_id.user.first_name} ${request.renter_id.user.last_name}`
+                      : `${request.owner_id.user.first_name} ${request.owner_id.user.last_name}`}
+                  </p>
+                  <p className="text-gray-600">
+                    Status: <span className="font-medium">{request.status}</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-600">
+                    {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500">No rental requests</p>
+      )}
+    </div>
+  )
+}
+
 export default function UserProfilePage() {
   const { id } = useParams()
+  const { user: currentUser } = useAuth()
   const [user, setUser] = useState<DirectusUser | null>(null)
   const [clientId, setClientId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -25,23 +165,11 @@ export default function UserProfilePage() {
   // Filter listings client-side for the specific user
   const listings = allListings.filter(listing => listing.user_id?.user?.id === id)
 
-  console.log("listings in the user profile page", listings)
-
-  // Fetch user's reviews using the client ID
-  const {
-    reviews,
-    loading: reviewsLoading,
-    error: reviewsError
-  } = useReviews({
-    userId: clientId || ''  // Only fetch reviews once we have the client ID
-  })
-
   useEffect(() => {
     const fetchUser = async () => {
       try {
         setLoading(true)
         const clientData = await getOrCreateClient(id as string)
-        console.log("clientData in the user profile page", clientData)
         setUser(clientData.user as DirectusUser)
         setClientId(clientData.id)  // Store the client ID for reviews
       } catch (err) {
@@ -57,12 +185,7 @@ export default function UserProfilePage() {
     }
   }, [id])
 
-  // Effect to monitor user state changes
-  useEffect(() => {
-    console.log("Current user state:", user)
-  }, [user])
-
-  if (loading || listingsLoading || (clientId && reviewsLoading)) {
+  if (loading || listingsLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
@@ -70,20 +193,17 @@ export default function UserProfilePage() {
     )
   }
 
-  if (error || listingsError || reviewsError || !user) {
+  if (error || listingsError || !user) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-red-500">
-          Error loading profile: {error?.message || listingsError?.message || reviewsError?.message || 'User not found'}
+          Error loading profile: {error?.message || listingsError?.message || 'User not found'}
         </div>
       </div>
     )
   }
 
-  // Calculate average rating
-  const averageRating = reviews && reviews.length > 0
-    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
-    : 0
+  const isOwnProfile = currentUser?.id === id
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -100,11 +220,7 @@ export default function UserProfilePage() {
             <h1 className="text-2xl font-bold">
               {user.first_name} {user.last_name}
             </h1>
-            <div className="flex items-center mt-2">
-              <span className="text-yellow-400 mr-1">★</span>
-              <span>{averageRating.toFixed(1)}</span>
-              <span className="text-gray-500 ml-1">({reviews?.length || 0} reviews)</span>
-            </div>
+            {clientId && <ReviewsSection clientId={clientId} />}
           </div>
         </div>
       </div>
@@ -141,37 +257,10 @@ export default function UserProfilePage() {
         )}
       </div>
 
-      {/* Reviews Section */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Reviews</h2>
-        {reviews && reviews.length > 0 ? (
-          <div className="space-y-4">
-            {reviews.map((review) => (
-              <div key={review.id} className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <Link href={`/users/${review.reviewer_id.id}`}>
-                      <span className="font-medium hover:text-green-600">
-                        {review.reviewer_id.first_name} {review.reviewer_id.last_name}
-                      </span>
-                    </Link>
-                    <div className="flex items-center">
-                      <span className="text-yellow-400">{'★'.repeat(review.rating)}</span>
-                      <span className="text-gray-300">{'★'.repeat(5 - review.rating)}</span>
-                    </div>
-                  </div>
-                  <span className="text-gray-500 text-sm">
-                    {new Date().toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-gray-600">{review.comment}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No reviews yet</p>
-        )}
-      </div>
+      {/* Rental Requests Section - Only show for own profile */}
+      {isOwnProfile && clientId && (
+        <RentalRequestsSection userId={clientId} />
+      )}
     </div>
   )
 } 

@@ -20,7 +20,8 @@ export function useReviews(options: UseReviewsOptions = {}) {
       try {
         setLoading(true);
         const response = await getReviews(options.userId);
-        setReviews(response.data || []);
+        console.log("Reviews response in useReviews: ", response);
+        setReviews(response.response || []);
       } catch (err) {
         setError(err as Error);
       } finally {
