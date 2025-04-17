@@ -735,9 +735,20 @@ export const getUserConversations = async (userId: string) => {
         },
         fields: [
           "*",
+          /*
+          id: 1
+          user_1: 1
+          user_2: 2
+          gear_listing_id: 1*/
           "user_1.*",
+          /*
+          id: 1
+          user_id:wncsoinvdsnds
+          */
           "user_2.*",
           "user_1.user.*",
+          /*
+          */
           "user_2.user.*",
           "gear_listing_id.*",
         ],
