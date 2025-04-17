@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -19,73 +19,62 @@ import Image from 'next/image'
 import { format, set } from 'date-fns'
 import { DirectusClient } from '@directus/sdk';
 import { useClient } from '@/hooks/useClient';
+import { useUserConversations } from '@/hooks/useUserConversations';
+import { useConversationMessages } from '@/hooks/useConversationMessages';
 
 export default function Conversations() {
     const { user } = useAuth()
-     // Add client state
-    const [conversations, setConversations] = useState<DirectusConversation[]>([])
+    // const [conversations, setConversations] = useState<DirectusConversation[]>([])
     const [selectedConversation, setSelectedConversation] = useState<DirectusConversation | null>(null)
-    const [messages, setMessages] = useState<DirectusMessage[]>([])
     const [newMessage, setNewMessage] = useState('')
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [sending, setSending] = useState(false)
-
+    const [refreshMessages, setRefreshMessages] = useState(true);
     const { client, loading: clientLoading, error: clientError } = useClient(user?.id || '')
+    const { conversations, loading: conversationsLoading, error: conversationsError } = useUserConversations(user?.id || '')
+    const { messages, loading: messagesLoading, error: messagesError } = useConversationMessages(selectedConversation?.id || '',refreshMessages)
+    //const [messages, setMessages] = useState<DirectusMessage[]>([])
+    //setLoading(conversationsLoading || clientLoading)
 
-    // Fetch user conversations when component mounts
     useEffect(() => {
-        
-        const fetchConversations = async () => {
-            if (!user?.id) return
-
-            try {
-                setLoading(true)
-                const userConversations = await getUserConversations(user.id)
-                setConversations(userConversations)
-
-                // Auto-select the first conversation if available
-                if (userConversations.length > 0 && !selectedConversation) {
-                    setSelectedConversation(userConversations[0])
-                }
-            } catch (err) {
-                console.error('Failed to fetch conversations:', err)
-                setError('Failed to load conversations. Please try again later.')
-            } finally {
-                setLoading(false)
-            }
+        console.log('Conversations changed')
+        if (conversations.length > 0 && !selectedConversation) {
+            setSelectedConversation(conversations[0])
         }
-
-        fetchConversations()
-    }, [user])
+    }, [conversations])
 
     // Fetch messages when selected conversation changes
+    // useEffect(() => {
+    //     console.log('Selected conversation changed:')
+
+    //     const fetchMessages = async () => {
+    //         if (!selectedConversation) {
+    //             console.log('no selected conv when fetching');
+    //             return
+    //         }
+
+    //         try {
+    //             const conversationMessages = await getConversationMessages(selectedConversation.id)
+    //             console.log('Fetched messages:', conversationMessages)
+    //             setMessages(conversationMessages)
+    //             // Scroll to bottom of messages
+
+    //         } catch (err) {
+    //             console.error('Failed to fetch messages:', err)
+    //             setError('Failed to load messages. Please try again later.')
+    //         }
+    //     }
+    //     fetchMessages()
+    // }, [selectedConversation])
     useEffect(() => {
-        const fetchMessages = async () => {
-            if (!selectedConversation){
-                console.log('no selected conv when fetching');
-                return}
-
-            try {
-                const conversationMessages = await getConversationMessages(selectedConversation.id)
-                console.log('Fetched messages:', conversationMessages)
-                setMessages(conversationMessages)
-
-                // Scroll to bottom of messages
-                setTimeout(() => {
-                    const messageContainer = document.getElementById('message-container')
-                    if (messageContainer) {
-                        messageContainer.scrollTop = messageContainer.scrollHeight
-                    }
-                }, 100)
-            } catch (err) {
-                console.error('Failed to fetch messages:', err)
-                setError('Failed to load messages. Please try again later.')
+        setTimeout(() => {
+            const messageContainer = document.getElementById('message-container')
+            if (messageContainer) {
+                messageContainer.scrollTop = messageContainer.scrollHeight
             }
-        }
-
-        fetchMessages()
-    }, [selectedConversation])
+        }, 100)
+    }, [messages])
 
     const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -96,7 +85,7 @@ export default function Conversations() {
             setSending(true)
             console.log('Sending message:', newMessage.trim())
             console.log('Selected conversation:', selectedConversation.id)
-            console.log('Client ID:', client.id)    
+            console.log('Client ID:', client.id)
             await sendMessage({
                 conversation: selectedConversation.id,
                 sender: client.id,
@@ -104,8 +93,7 @@ export default function Conversations() {
             })
 
             // Refresh messages
-            const updatedMessages = await getConversationMessages(selectedConversation.id)
-            setMessages(updatedMessages)
+            setRefreshMessages((prev) => !prev)
 
             // Clear input
             setNewMessage('')
@@ -128,7 +116,6 @@ export default function Conversations() {
     // Get the other user in the conversation (not the current user)
     const getOtherUser = (conversation: DirectusConversation) => {
         if (!user) return null
-        console.log('Conv User :', conversation.user_1.user.first_name)
         return conversation.user_1.id === client?.id ? conversation.user_2 : conversation.user_1
     }
 
@@ -242,7 +229,7 @@ export default function Conversations() {
                                     ) : (
                                         <div className="space-y-4">
                                             {messages.map((message) => {
-                                                const isCurrentUser = message.sender.id === user?.id
+                                                const isCurrentUser = message.sender.id === client?.id;
                                                 return (
                                                     <div
                                                         key={message.id}
