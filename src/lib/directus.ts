@@ -508,10 +508,10 @@ export const getRentalRequests = async (
     console.log("type", type);
     console.log("userId", userId);
 
-    const client = await getOrCreateClient(userId);
-    console.log("client", client);
     const query =
-      type === "owner" ? { owner_id: client.id } : { renter_id: client.id };
+      type === "owner" ? { owner_id: userId } : { renter_id: userId };
+
+    console.log("query", query);
 
     const response = (await directus.request(
       readItems("rental_requests", {
@@ -521,14 +521,14 @@ export const getRentalRequests = async (
           "gear_listing_id.*",
           "renter_id.*",
           "renter_id.user.*",
-          "owner_id.last_name*",
+          "owner_id.*",
           "owner_id.user.*",
         ],
         meta: "total_count",
       })
     )) as unknown as DirectusRentalRequest[];
 
-    console.log("response", response);
+    console.log("Rental requests backend response: ", response);
     return response;
   } catch (error) {
     console.error("Error fetching rental requests:", error);
@@ -561,7 +561,6 @@ export const getReviews = async (userId: string) => {
         fields: ["*", "reviewer_id.*"],
       })
     )) as unknown as DirectusReview[];
-    console.log("Backend response of getReviews: ", response);
 
     return {
       response,

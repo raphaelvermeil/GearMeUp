@@ -68,7 +68,7 @@ const Navbar = () => {
             {user ? (
               <div className="flex items-center space-x-4">
                 <Link
-                  href="/profile"
+                  href={`/users/${user.id}`}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Profile
@@ -180,7 +180,7 @@ const Navbar = () => {
             {user ? (
               <div className="flex flex-col space-y-2">
                 <Link
-                  href="/profile"
+                  href={`/users/${user.id}`} 
                   className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                 >
                   Profile

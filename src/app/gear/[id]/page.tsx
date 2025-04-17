@@ -9,7 +9,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { useRentalRequest } from '@/hooks/useRentalRequest'
+import { useRentalRequest } from '@/hooks/useCreateRentalRequest'
 
 
 export default function GearDetailPage() {
