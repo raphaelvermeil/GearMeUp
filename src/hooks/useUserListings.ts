@@ -21,7 +21,7 @@ export function useUserListings(userId: string) {
         // Then fetch listings using the client ID
         const response = await getGearListings({
           filters: {
-            user_id: client.id,
+            owner: client.id,
           },
         });
         setListings(response);

@@ -418,7 +418,7 @@ export default function UserProfilePage() {
   } = useGearListings()
 
   // Filter listings client-side for the specific user
-  const listings = allListings.filter(listing => listing.user_id?.user?.id === id)
+  const listings = allListings.filter(listing => listing.owner?.user?.id === id)
 
   useEffect(() => {
     const fetchUser = async () => {

@@ -60,7 +60,7 @@ export default function NewGearPage() {
       const images = Array.from(data.images)
       await createGearListing({
         ...data,
-        user_id: client.id, // Use the client ID instead of the user ID
+        ownerID: client.id, // Use the client ID instead of the user ID
         images,
       })
       router.push('/gear')

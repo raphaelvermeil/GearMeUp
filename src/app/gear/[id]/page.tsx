@@ -62,7 +62,7 @@ export default function GearDetailPage() {
       throw new Error('Failed to get or create client renter')
     }
 
-    if (!listing.user_id) {
+    if (!listing.owner) {
       throw new Error('Gear listing has no owner')
     }
 
@@ -70,7 +70,7 @@ export default function GearDetailPage() {
     const rentalRequest = await submitRequest({
       gear_listing_id: listing.id,
       renter_id: clientRenter.id,
-      owner_id: listing.user_id.id,
+      owner_id: listing.owner.id,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
       message: message?.trim(),
@@ -171,13 +171,13 @@ export default function GearDetailPage() {
           {/* Owner Information */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <h2 className="text-xl font-semibold mb-2">Owner</h2>
-            {listing.user_id?.user ? (
+            {listing.owner?.user ? (
               <div className="mt-4">
                 <Link 
-                  href={`/users/${listing.user_id.user.id}`}
+                  href={`/users/${listing.owner.user.id}`}
                   className="text-green-600 hover:text-green-700 flex items-center space-x-2"
                 >
-                  <span>{listing.user_id.user.first_name} {listing.user_id.user.last_name}</span>
+                  <span>{listing.owner.first_name} {listing.owner.last_name}</span>
                   <span className="text-sm">View Profile →</span>
                 </Link>
               </div>
