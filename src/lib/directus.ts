@@ -97,7 +97,7 @@ export interface TransformedGearListing {
 
 export interface DirectusRentalRequest {
   id: string;
-  gear_listing_id: DirectusGearListing;
+  gear_listing: DirectusGearListing;
   renter_id: {
     id: string;
     user: {
@@ -483,7 +483,7 @@ export const createGearListing = async (data: {
 
 // Rental request functions
 export const createRentalRequest = async (requestData: {
-  gear_listing_id: string;
+  gear_listing: string;
   renter_id: string;
   owner_id: string;
   start_date: string;
@@ -518,7 +518,7 @@ export const getRentalRequests = async (
         filter: query,
         fields: [
           "*",
-          "gear_listing_id.*",
+          "gear_listing.*",
           "renter_id.*",
           "renter_id.user.*",
           "owner_id.*",
@@ -689,7 +689,7 @@ export interface DirectusConversation {
       email: string;
     };
   };
-  gear_listing_id: DirectusGearListing;
+  gear_listing: DirectusGearListing;
   // created_at: string;
 }
 
@@ -713,7 +713,7 @@ export interface DirectusMessage {
 export const createConversation = async (data: {
   user_1: string;
   user_2: string;
-  gear_listing_id: string;
+  gear_listing: string;
 }) => {
   try {
     const response = await directus.request(createItem("conversations", data));
@@ -739,7 +739,7 @@ export const getUserConversations = async (userId: string) => {
           id: 1
           user_1: 1
           user_2: 2
-          gear_listing_id: 1*/
+          gear_listing: 1*/
           "user_1.*",
           /*
           id: 1
@@ -750,9 +750,9 @@ export const getUserConversations = async (userId: string) => {
           /*
           */
           "user_2.user.*",
-          "gear_listing_id.*",
+          "gear_listing.*",
         ],
-        sort: ["-gear_listing_id.id"],
+        sort: ["-gear_listing.id"],
       })
     )) as DirectusConversation[];
 
@@ -775,7 +775,7 @@ export const getConversation = async (conversationId: string) => {
           "user_2.*",
           "user_1.user.*",
           "user_2.user.*",
-          "gear_listing_id.*",
+          "gear_listing.*",
         ],
       })
     );
@@ -787,12 +787,12 @@ export const getConversation = async (conversationId: string) => {
 };
 
 // Get conversation messages
-export const getConversationMessages = async (conversationId: string) => {
+export const getConversationMessages = async (conversationID: string) => {
   try {
     const response = (await directus.request(
       readItems("messages", {
         filter: {
-          conversation: conversationId,
+          conversation: conversationID,
         },
         fields: [
           "id", // Message ID

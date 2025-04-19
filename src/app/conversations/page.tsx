@@ -174,7 +174,7 @@ export default function Conversations() {
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-gray-600 truncate">
-                                                    {conversation.gear_listing_id ? conversation.gear_listing_id.title : 'No gear listing'}
+                                                    {conversation.gear_listing ? conversation.gear_listing.title : 'No gear listing'}
                                                 </p>
                                                 {/* <p className="text-xs text-gray-500 mt-1">
                           {format(new Date(conversation.created_at), 'MMM d, yyyy')}
@@ -200,16 +200,16 @@ export default function Conversations() {
                                             }
                                         </h3>
                                         <p className="text-sm text-gray-600">
-                                            {selectedConversation.gear_listing_id
-                                                ? `About: ${selectedConversation.gear_listing_id.title}`
+                                            {selectedConversation.gear_listing
+                                                ? `About: ${selectedConversation.gear_listing.title}`
                                                 : 'No gear listing'
                                             }
                                         </p>
                                     </div>
 
-                                    {selectedConversation.gear_listing_id && (
+                                    {selectedConversation.gear_listing && (
                                         <Link
-                                            href={`/gear/${selectedConversation.gear_listing_id.id}`}
+                                            href={`/gear/${selectedConversation.gear_listing.id}`}
                                             className="ml-auto text-sm text-green-600 hover:text-green-700"
                                         >
                                             View Listing
