@@ -68,10 +68,10 @@ export default function RentalRequestsPage() {
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
             >
               <h2 className="text-xl font-semibold mb-2">
-                {request.gear_listing_id.title}
+                {request.gear_listing.title}
               </h2>
               <p className="text-gray-600 mb-4">
-                {request.gear_listing_id.description}
+                {request.gear_listing.description}
               </p>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>

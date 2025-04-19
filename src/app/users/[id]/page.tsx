@@ -206,7 +206,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-medium text-gray-900">
-                        {request.gear_listing_id?.title || 'Untitled Gear'}
+                        {request.gear_listing?.title || 'Untitled Gear'}
                       </h3>
                       <p className="text-sm text-gray-500">
                         Status: <span className={`font-medium ${
@@ -260,9 +260,9 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <h4 className="text-sm font-medium text-gray-900">Gear Details</h4>
-                          <p className="text-sm text-gray-500">Category: {request.gear_listing_id?.category}</p>
-                          <p className="text-sm text-gray-500">Condition: {request.gear_listing_id?.condition}</p>
-                          <p className="text-sm text-gray-500">Location: {request.gear_listing_id?.location}</p>
+                          <p className="text-sm text-gray-500">Category: {request.gear_listing?.category}</p>
+                          <p className="text-sm text-gray-500">Condition: {request.gear_listing?.condition}</p>
+                          <p className="text-sm text-gray-500">Location: {request.gear_listing?.location}</p>
                         </div>
                         <div>
                           <h4 className="text-sm font-medium text-gray-900">Rental Details</h4>
@@ -279,15 +279,15 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                               Math.ceil(
                                 (new Date(request.end_date).getTime() - new Date(request.start_date).getTime()) / 
                                 (1000 * 60 * 60 * 24)
-                              ) * request.gear_listing_id?.price
+                              ) * request.gear_listing?.price
                             }
                           </p>
                         </div>
                       </div>
-                      {request.gear_listing_id?.description && (
+                      {request.gear_listing?.description && (
                         <div className="mt-4">
                           <h4 className="text-sm font-medium text-gray-900">Description</h4>
-                          <p className="text-sm text-gray-500 mt-1">{request.gear_listing_id.description}</p>
+                          <p className="text-sm text-gray-500 mt-1">{request.gear_listing.description}</p>
                         </div>
                       )}
                       

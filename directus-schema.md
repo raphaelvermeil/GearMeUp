@@ -37,7 +37,7 @@
 ### gear_images
 
 - id (primary key)
-- gear_listing_id (foreign key to gear_listings)
+- gear_listing (foreign key to gear_listings)
 - image (file)
 - is_primary (boolean)
 - created_at (datetime)
@@ -45,7 +45,7 @@
 ### rental_requests
 
 - id (primary key)
-- gear_listing_id (foreign key to gear_listings)
+- gear_listing (foreign key to gear_listings)
 - renter_id (foreign key to users)
 - owner_id (foreign key to users)
 - start_date (date)

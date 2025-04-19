@@ -68,7 +68,7 @@ export default function GearDetailPage() {
 
 
     const rentalRequest = await submitRequest({
-      gear_listing_id: listing.id,
+      gear_listing: listing.id,
       renter_id: clientRenter.id,
       owner_id: listing.owner.id,
       start_date: startDate.toISOString(),
