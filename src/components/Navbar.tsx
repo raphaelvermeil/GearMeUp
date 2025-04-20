@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from "@/contexts/AuthContext"
-
+import { useClient } from '@/hooks/useClient'
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
   const { user, handleLogout } = useAuth()
+  const { client } = useClient(user?.id || '')
+
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -68,13 +70,13 @@ const Navbar = () => {
             {user ? (
               <div className="flex items-center space-x-4">
                 <Link
-                  href={`/users/${user.id}`}
+                  href={`/users/${client?.id}`}
                   className="text-gray-700 hover:text-gray-900"
                 >
                   Profile
                 </Link>
                 <span className="text-gray-700">
-                  {user.first_name} {user.last_name}
+                  {client?.user.first_name} {client?.user.last_name}
                 </span>
                 <button
                   onClick={handleLogout}
@@ -180,13 +182,13 @@ const Navbar = () => {
             {user ? (
               <div className="flex flex-col space-y-2">
                 <Link
-                  href={`/users/${user.id}`} 
+                  href={`/users/${client?.id}`} 
                   className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                 >
                   Profile
                 </Link>
                 <span className="block px-4 py-2 text-base font-medium text-gray-700">
-                  {user.first_name} {user.last_name}
+                  {client?.user.first_name} {client?.user.last_name}
                 </span>
                 <button
                   onClick={handleLogout}

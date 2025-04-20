@@ -11,9 +11,9 @@ export function useCreateReview(options: UseCreateReviewOptions = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const submitReview = async (data: {
-    rental_request_id: string;
-    reviewer_id: string;
-    reviewed_id: string;
+    rental_request: string;
+    reviewer: string;
+    reviewed: string;
     rating: number;
     comment: string;
   }) => {

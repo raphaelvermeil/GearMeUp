@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { getOrCreateClient, DirectusUser, DirectusClientUser, DirectusRentalRequest } from '@/lib/directus'
+import { getOrCreateClient, DirectusUser, DirectusClientUser, DirectusRentalRequest, directus } from '@/lib/directus'
+import { readItem } from '@directus/sdk'
 import { useGearListings } from '@/hooks/useGearListings'
 import { useReviews } from '@/hooks/useReviews'
 import { useRentalRequests } from '@/hooks/useRentalRequests'
@@ -20,7 +21,7 @@ function ReviewsSection({ clientId }: { clientId: string }) {
     loading: reviewsLoading,
     error: reviewsError
   } = useReviews({
-    userId: clientId
+    clientId: clientId
   })
 
   
@@ -53,9 +54,9 @@ function ReviewsSection({ clientId }: { clientId: string }) {
               <div key={review.id} className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
-                    <Link href={`/users/${review.reviewer_id.id}`}>
+                    <Link href={`/users/${review.reviewer.id}`}>
                       <span className="font-medium hover:text-green-600">
-                        {review.reviewer_id.user.first_name} {review.reviewer_id.user.last_name}
+                        {review.reviewer.first_name} {review.reviewer.last_name}
                       </span>
                     </Link>
                     <div className="flex items-center">
@@ -135,17 +136,17 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
       
       let reviewed;
       if(role === 'renter') {
-        reviewed = request.owner_id.id;
+        reviewed = request.owner.id;
       } else if(role === 'owner') {
-        reviewed = request.renter_id.id;
+        reviewed = request.renter.id;
       } else {
         throw new Error('Invalid role');
       }
 
       await submitReview({
-        rental_request_id: request.id,
-        reviewer_id: clientId,
-        reviewed_id: reviewed,
+        rental_request: request.id,
+        reviewer: clientId,
+        reviewed: reviewed,
         rating: reviewData.rating,
         comment: reviewData.comment,
       });
@@ -219,14 +220,14 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                         {role === 'owner' ? 'Requested by: ' : 'Owner: '}
                         <Link
                           href={`/users/${role === 'owner' 
-                            ? request.renter_id.user.id
-                            : request.owner_id.user.id}`}
+                            ? request.renter.id
+                            : request.owner.id}`}
                           className="font-medium hover:text-green-600"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {role === 'owner' 
-                            ? `${request.renter_id.user.first_name} ${request.renter_id.user.last_name}`
-                            : `${request.owner_id.user.first_name} ${request.owner_id.user.last_name}`
+                            ? `${request.renter.first_name} ${request.renter.last_name}`
+                            : `${request.owner.first_name} ${request.owner.last_name}`
                           }
                         </Link>
                       </p>
@@ -403,12 +404,10 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
 
 export default function UserProfilePage() {
   const { id } = useParams()
-  const { user: currentUser } = useAuth()
-  const [user, setUser] = useState<DirectusUser | null>(null)
-  const [clientId, setClientId] = useState<string | null>(null)
+  const { user } = useAuth()
+  const [client, setClient] = useState<DirectusClientUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const { client, loading: clientLoading, error: clientError } = useClient(id as string)
 
   // Fetch user's gear listings
   const { 
@@ -417,26 +416,38 @@ export default function UserProfilePage() {
     error: listingsError 
   } = useGearListings()
 
+
+
+
   // Filter listings client-side for the specific user
-  const listings = allListings.filter(listing => listing.owner?.user?.id === id)
+  const listings = allListings.filter(listing => listing.owner?.id == id)
+
+
+  console.log(`listings: ${listings}`)
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchClient = async () => {
       try {
         setLoading(true)
-        const clientData = await getOrCreateClient(id as string)
-        setUser(clientData.user as DirectusUser)
-        setClientId(clientData.id)  // Store the client ID for reviews
+        // Get client by ID directly
+        console.log(`id: ${id}`)
+        const response = await directus.request(
+          readItem("clients", id as string, {
+            fields: ["*", "user.*"],
+          })
+        );
+        console.log(`gougou`)
+        setClient(response as DirectusClientUser)
       } catch (err) {
-        console.error("Error fetching user:", err)
+        console.error("Error fetching client:", err)
         setError(err as Error)
       } finally {
         setLoading(false)
       }
     }
 
-    if (id) {
-      fetchUser()
+      if (id) {
+      fetchClient()
     }
   }, [id])
 
@@ -448,7 +459,7 @@ export default function UserProfilePage() {
     )
   }
 
-  if (error || listingsError || !user) {
+  if (error || listingsError || !client) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
@@ -460,7 +471,8 @@ export default function UserProfilePage() {
     )
   }
 
-  const isOwnProfile = currentUser?.id === id
+  const isOwnProfile = (user?.id === client?.user.id) && (user?.id !== undefined)
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -470,13 +482,13 @@ export default function UserProfilePage() {
           <div className="flex items-center space-x-4">
             <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
               <span className="text-2xl text-gray-500">
-                {user.first_name[0]}
-                {user.last_name[0]}
+                {client.first_name[0]}
+                {client.last_name[0]}
               </span>
             </div>
             <div>
               <h1 className="text-2xl font-bold">
-                {user.first_name} {user.last_name}
+                {client.first_name} {client.last_name}
               </h1>
               {client?.id && <ReviewsSection clientId={client.id} />}
             </div>
@@ -516,8 +528,8 @@ export default function UserProfilePage() {
         </div>
 
         {/* Rental Requests Section - Only show for own profile */}
-        {isOwnProfile && clientId && (
-          <RentalRequestsSection clientId={client?.id || ''} />
+        {isOwnProfile && client?.id && (
+          <RentalRequestsSection clientId={client.id} />
         )}
       </div>
     </div>

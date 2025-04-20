@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { getReviews, DirectusReview } from "@/lib/directus";
 
 interface UseReviewsOptions {
-  userId?: string;
+  clientId?: string;
 }
 
 export function useReviews(options: UseReviewsOptions = {}) {
@@ -12,14 +12,14 @@ export function useReviews(options: UseReviewsOptions = {}) {
 
   useEffect(() => {
     async function fetchReviews() {
-      if (!options.userId) {
+      if (!options.clientId) {
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        const response = await getReviews(options.userId);
+        const response = await getReviews(options.clientId);
         console.log("Reviews response in useReviews: ", response);
         setReviews(response.response || []);
       } catch (err) {
@@ -30,7 +30,7 @@ export function useReviews(options: UseReviewsOptions = {}) {
     }
 
     fetchReviews();
-  }, [options.userId]);
+  }, [options.clientId]);
 
   return {
     reviews,

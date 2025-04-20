@@ -27,7 +27,6 @@ export default function GearDetailPage() {
   const { submitRequest, loading: submitting, error: submitError } = useRentalRequest({
     onSuccess: () => {
       alert('Rental request submitted successfully!')
-      router.push('/rentals/requests')
     },
   })
 
@@ -69,8 +68,8 @@ export default function GearDetailPage() {
 
     const rentalRequest = await submitRequest({
       gear_listing: listing.id,
-      renter_id: clientRenter.id,
-      owner_id: listing.owner.id,
+      renter: clientRenter.id,
+      owner: listing.owner.id,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
       message: message?.trim(),
@@ -171,10 +170,10 @@ export default function GearDetailPage() {
           {/* Owner Information */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <h2 className="text-xl font-semibold mb-2">Owner</h2>
-            {listing.owner?.user ? (
+            {listing.owner ? (
               <div className="mt-4">
                 <Link 
-                  href={`/users/${listing.owner.user.id}`}
+                  href={`/users/${listing.owner.id}`}
                   className="text-green-600 hover:text-green-700 flex items-center space-x-2"
                 >
                   <span>{listing.owner.first_name} {listing.owner.last_name}</span>

@@ -12,8 +12,8 @@ export function useRentalRequest(options: UseRentalRequestOptions = {}) {
 
   const submitRequest = async (data: {
     gear_listing: string;
-    renter_id: string;
-    owner_id: string;
+    renter: string;
+    owner: string;
     start_date: string;
     end_date: string;
     message?: string;
@@ -23,17 +23,17 @@ export function useRentalRequest(options: UseRentalRequestOptions = {}) {
       setError(null);
       await createRentalRequest({
         gear_listing: data.gear_listing,
-        renter_id: data.renter_id,
-        owner_id: data.owner_id,
+        renter: data.renter,
+        owner: data.owner,
         start_date: data.start_date,
         end_date: data.end_date,
       });
       // Create or get conversation
-      if(data.renter_id === data.owner_id) {
+      if(data.renter === data.owner) {
         throw new Error('Renter and owner cannot be the same user');}
       const conversationData = {
-        user_1: data.renter_id,
-        user_2: data.owner_id,
+        user_1: data.renter,
+        user_2: data.owner,
         gear_listing: data.gear_listing,
       }
       const conversation = await createConversation(conversationData);
@@ -43,7 +43,7 @@ export function useRentalRequest(options: UseRentalRequestOptions = {}) {
       if (data.message?.trim()) {
         const messageCreated = await sendMessage({
           conversation: conversation.id,
-          sender: data.renter_id,
+          sender: data.renter,
           message: data.message?.trim()
         });
         console.log('Message sent:', messageCreated);

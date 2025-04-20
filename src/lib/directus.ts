@@ -12,6 +12,7 @@ import {
   createUser,
   readMe,
   uploadFiles,
+  auth,
 } from "@directus/sdk";
 import { get } from "http";
 
@@ -37,14 +38,9 @@ export interface DirectusFile {
 
 export interface DirectusClientUser {
   id: string;
-  user: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
-  created_at: string;
-  updated_at: string;
+  user: DirectusUser;
+  first_name: string;
+  last_name: string;
 }
 
 export interface DirectusGearListing {
@@ -55,17 +51,7 @@ export interface DirectusGearListing {
   condition: string;
   location: string;
   category: string;
-  owner: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    user: {
-      id: string;
-      email: string;
-      first_name: string;
-      last_name: string;
-    };
-  };
+  owner: DirectusClientUser;
   gear_images: Array<{
     id: string;
     gear_listings_id: string;
@@ -87,39 +73,14 @@ export interface TransformedGearListing {
     id: string;
     url: string;
   }[];
-  owner: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-    } | null;
-  } | null;
+  owner?: DirectusClientUser;
 }
 
 export interface DirectusRentalRequest {
   id: string;
   gear_listing: DirectusGearListing;
-  renter_id: {
-    id: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-    };
-  };
-  owner_id: {
-    id: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-    };
-  };
+  renter: DirectusClientUser;
+  owner: DirectusClientUser;
   start_date: string;
   end_date: string;
   status: string;
@@ -128,25 +89,26 @@ export interface DirectusRentalRequest {
 export interface DirectusReview {
   id: string;
   rental_request_id: DirectusRentalRequest;
-  reviewer_id: {
-    id: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-    };
-  };
-  reviewed_id: {
-    id: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-    };
-  };
+  reviewer: DirectusClientUser;
+  reviewed: DirectusClientUser;
   rating: number;
   comment: string;
+}
+
+export interface DirectusConversation {
+  id: string;
+  user_1: DirectusClientUser;
+  user_2: DirectusClientUser;
+  gear_listing: DirectusGearListing;
+  // created_at: string;
+}
+
+export interface DirectusMessage {
+  id: string;
+  conversation: DirectusConversation;
+  sender: DirectusClientUser;
+  message: string;
+  date_created: string;
 }
 
 interface DirectusResponse<T> {
@@ -268,7 +230,8 @@ export const getGearListings = async ({
     condition?: string;
     minPrice?: number;
     maxPrice?: number;
-    search?: string; // Added search parameter
+    search?: string;
+    owner?: string;
   };
   page?: number;
   limit?: number;
@@ -281,10 +244,10 @@ export const getGearListings = async ({
     if (filters?.minPrice) filter.price = { _gte: filters.minPrice };
     if (filters?.maxPrice)
       filter.price = { ...filter.price, _lte: filters.maxPrice };
+    if (filters?.owner) filter.owner = filters.owner;
 
     // Add search filter if provided
     if (filters?.search && filters.search.trim() !== "") {
-      // Use _or to search in both title and description
       filter._or = [
         { title: { _contains: filters.search } },
         { description: { _contains: filters.search } },
@@ -295,11 +258,7 @@ export const getGearListings = async ({
       readItems("gear_listings", {
         fields: [
           "*",
-          "owner.id",
-          "owner.user.id",
-          "owner.user.email",
-          "owner.user.first_name",
-          "owner.user.last_name",
+          "owner.*",
           "gear_images.*",
           "gear_images.directus_files_id.*",
         ],
@@ -333,15 +292,20 @@ export const getGearListings = async ({
       owner: listing.owner
         ? {
             id: listing.owner.id,
-            user: listing.owner.user
-              ? {
-                  id: listing.owner.user.id,
-                  first_name: listing.owner.user.first_name,
-                  last_name: listing.owner.user.last_name,
-                }
-              : null,
+            user: {
+              id: listing.owner.user.id,
+              first_name: listing.owner.user.first_name,
+              last_name: listing.owner.user.last_name,
+              email: listing.owner.user.email,
+              role: listing.owner.user.role,
+              status: listing.owner.user.status,
+              created_at: listing.owner.user.created_at,
+              updated_at: listing.owner.user.updated_at,
+            },
+            first_name: listing.owner.first_name,
+            last_name: listing.owner.last_name,
           }
-        : null,
+        : undefined,
     }));
 
     return transformedListings;
@@ -382,17 +346,20 @@ export const getGearListing = async (id: string) => {
       owner: response.owner
         ? {
             id: response.owner.id,
+            user: {
+              id: response.owner.user.id,
+              first_name: response.owner.user.first_name,
+              last_name: response.owner.user.last_name,
+              email: response.owner.user.email,
+              role: response.owner.user.role,
+              status: response.owner.user.status,
+              created_at: response.owner.user.created_at,
+              updated_at: response.owner.user.updated_at,
+            },
             first_name: response.owner.first_name,
             last_name: response.owner.last_name,
-            user: response.owner.user
-              ? {
-                  id: response.owner.user.id,
-                  first_name: response.owner.user.first_name,
-                  last_name: response.owner.user.last_name,
-                }
-              : null,
           }
-        : null,
+        : undefined,
     };
 
     return transformedListing;
@@ -486,8 +453,8 @@ export const createGearListing = async (data: {
 // Rental request functions
 export const createRentalRequest = async (requestData: {
   gear_listing: string;
-  renter_id: string;
-  owner_id: string;
+  renter: string;
+  owner: string;
   start_date: string;
   end_date: string;
 }) => {
@@ -503,29 +470,21 @@ export const createRentalRequest = async (requestData: {
 };
 
 export const getRentalRequests = async (
-  userId: string,
+  clientId: string,
   type: "owner" | "renter"
 ) => {
   try {
     console.log("type", type);
-    console.log("userId", userId);
+    console.log("clientId", clientId);
 
-    const query =
-      type === "owner" ? { owner_id: userId } : { renter_id: userId };
+    const query = type === "owner" ? { owner: clientId } : { renter: clientId };
 
     console.log("query", query);
 
     const response = (await directus.request(
       readItems("rental_requests", {
         filter: query,
-        fields: [
-          "*",
-          "gear_listing.*",
-          "renter_id.*",
-          "renter_id.user.*",
-          "owner_id.*",
-          "owner_id.user.*",
-        ],
+        fields: ["*", "gear_listing.*", "renter.*", "owner.*"],
         meta: "total_count",
       })
     )) as unknown as DirectusRentalRequest[];
@@ -540,9 +499,9 @@ export const getRentalRequests = async (
 
 // Review functions
 export const createReview = async (data: {
-  rental_request_id: string;
-  reviewer_id: string;
-  reviewed_id: string;
+  rental_request: string;
+  reviewer: string;
+  reviewed: string;
   rating: number;
   comment: string;
 }) => {
@@ -555,12 +514,12 @@ export const createReview = async (data: {
   }
 };
 
-export const getReviews = async (userId: string) => {
+export const getReviews = async (clientId: string) => {
   try {
     const response = (await directus.request(
       readItems("reviews", {
-        filter: { reviewed_id: userId },
-        fields: ["*", "reviewer_id.*"],
+        filter: { reviewed: clientId },
+        fields: ["*", "reviewer.*"],
       })
     )) as unknown as DirectusReview[];
 
@@ -671,46 +630,6 @@ export const updateRentalRequestStatus = async (
   }
 };
 
-export interface DirectusConversation {
-  id: string;
-  user_1: {
-    id: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-    };
-  };
-  user_2: {
-    id: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-    };
-  };
-  gear_listing: DirectusGearListing;
-  // created_at: string;
-}
-
-export interface DirectusMessage {
-  id: string;
-  conversation: DirectusConversation;
-  sender: {
-    id: string;
-    user: {
-      id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-    };
-  };
-  message: string;
-  date_created: string;
-}
-
 // Create a conversation
 export const createConversation = async (data: {
   user_1: string;
@@ -727,9 +646,11 @@ export const createConversation = async (data: {
 };
 
 // Get conversations for a user
-export const getUserConversations = async (userId: string) => {
+export const getUserConversations = async (userID: string) => {
   try {
-    const client = await getOrCreateClient(userId);
+    console.log("userID from backend", userID);
+    const client = await getOrCreateClient(userID);
+    console.log("client", client);
     const response = (await directus.request(
       readItems("conversations", {
         filter: {
@@ -737,20 +658,9 @@ export const getUserConversations = async (userId: string) => {
         },
         fields: [
           "*",
-          /*
-          id: 1
-          user_1: 1
-          user_2: 2
-          gear_listing: 1*/
           "user_1.*",
-          /*
-          id: 1
-          owner:wncsoinvdsnds
-          */
           "user_2.*",
           "user_1.user.*",
-          /*
-           */
           "user_2.user.*",
           "gear_listing.*",
         ],

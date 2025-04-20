@@ -3,31 +3,34 @@ import { getUserConversations } from "../lib/directus";
 import type { DirectusConversation } from "../lib/directus";
 
 export function useUserConversations(userID: string) {
-    const [conversations, setConversations] = useState<DirectusConversation[]>([])
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
+  const [conversations, setConversations] = useState<DirectusConversation[]>(
+    []
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-    useEffect(() => {
-        async function fetchUserConversations() {
-            try {
-                setLoading(true);
-                const userConversations = await getUserConversations(userID)
-                setConversations(userConversations)
-            } catch (err) {
-                setError(err as Error);
-            } finally {
-                setLoading(false);
-            }
-        }
+  useEffect(() => {
+    async function fetchUserConversations() {
+      try {
+        setLoading(true);
 
-        if (userID) {
-            fetchUserConversations();
-        }
-    }, [userID]);
+        const userConversations = await getUserConversations(userID);
+        setConversations(userConversations);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-    return {
-        conversations,
-        loading,
-        error,
-    };
+    if (userID) {
+      fetchUserConversations();
+    }
+  }, [userID]);
+
+  return {
+    conversations,
+    loading,
+    error,
+  };
 }

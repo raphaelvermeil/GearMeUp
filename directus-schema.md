@@ -1,4 +1,4 @@
-# Directus Schema for Outdoor Gear Rental App
+<!-- # Directus Schema for Outdoor Gear Rental App
 
 ## Collections
 
@@ -72,4 +72,4 @@
 - rental_request_id (foreign key to rental_requests)
 - content (text)
 - created_at (datetime)
-- read_at (datetime)
+- read_at (datetime) -->

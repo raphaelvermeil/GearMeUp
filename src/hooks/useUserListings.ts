@@ -12,7 +12,7 @@ export function useUserListings(userId: string) {
       try {
         setLoading(true);
 
-        // First get the client ID for this user
+        // First get the client for this user
         const client = await getOrCreateClient(userId);
         if (!client) {
           throw new Error("Could not get client for user");

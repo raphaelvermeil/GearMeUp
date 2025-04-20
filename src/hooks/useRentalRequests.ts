@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { getRentalRequests, DirectusRentalRequest } from "@/lib/directus";
 
-export const useRentalRequests = (userId: string, role: "owner" | "renter") => {
+export const useRentalRequests = (
+  clientId: string,
+  role: "owner" | "renter"
+) => {
   const [requests, setRequests] = useState<DirectusRentalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -9,7 +12,7 @@ export const useRentalRequests = (userId: string, role: "owner" | "renter") => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const response = await getRentalRequests(userId, role);
+      const response = await getRentalRequests(clientId, role);
       console.log("Response in hook:", response);
       setRequests(response || []);
     } catch (err) {
@@ -21,10 +24,10 @@ export const useRentalRequests = (userId: string, role: "owner" | "renter") => {
   };
 
   useEffect(() => {
-    if (userId) {
+    if (clientId) {
       fetchRequests();
     }
-  }, [userId, role]);
+  }, [clientId, role]);
 
   const updateRequestStatus = (
     requestId: string,
