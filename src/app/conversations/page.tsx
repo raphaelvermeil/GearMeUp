@@ -21,6 +21,7 @@ import { DirectusClient } from "@directus/sdk";
 import { useClient } from "@/hooks/useClient";
 import { useUserConversations } from "@/hooks/useUserConversations";
 import { useConversationMessages } from "@/hooks/useConversationMessages";
+import { useRealTimeMessages } from '@/hooks/useRealTimeMessages';
 
 export default function Conversations() {
     const { user } = useAuth();
@@ -43,10 +44,28 @@ export default function Conversations() {
         error: conversationsError,
     } = useUserConversations(user?.id || "");
     const {
-        messages,
+        messages: persistedMessages,
         loading: messagesLoading,
         error: messagesError,
     } = useConversationMessages(selectedConversation?.id || "", refreshMessages);
+    // ALBY
+    const {
+        messages: realTimeMessages,
+        sendMessage: sendRealTimeMessage,
+        error: realTimeError,
+        isConnected,
+        reconnectAttempts,
+        maxReconnectAttempts,
+    } = useRealTimeMessages(selectedConversation?.id || '');
+
+    // Merge persisted and real-time messages, removing duplicates
+    const allMessages = [...persistedMessages, ...realTimeMessages]
+        .filter((message, index, self) =>
+            index === self.findIndex((m) => m.id === message.id)
+        )
+        .sort((a, b) =>
+            new Date(a.date_created).getTime() - new Date(b.date_created).getTime()
+        );
 
     console.log(`conversations: ${conversations.length}`);
 
@@ -64,7 +83,7 @@ export default function Conversations() {
                 messageContainer.scrollTop = messageContainer.scrollHeight;
             }
         }, 100);
-    }, [messages]);
+    }, [allMessages]);
 
     const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -73,31 +92,26 @@ export default function Conversations() {
 
         try {
             setSending(true);
-            console.log("Sending message:", newMessage.trim());
-            console.log("Selected conversation:", selectedConversation.id);
-            console.log("Client ID:", client.id);
+            setError(null);
+
+            // Send message through real-time system
+            if (!isConnected) {
+                throw new Error("Real-time connection not available. Please try again.");
+            }
+
+            sendRealTimeMessage(newMessage.trim(), client.id);
+
+            // Also send through Directus for persistence
             await sendMessage({
                 conversation: selectedConversation.id,
                 sender: client.id,
                 message: newMessage.trim(),
             });
 
-            // Refresh messages
-            setRefreshMessages((prev) => !prev);
-
-            // Clear input
             setNewMessage("");
-
-            // Scroll to bottom
-            setTimeout(() => {
-                const messageContainer = document.getElementById("message-container");
-                if (messageContainer) {
-                    messageContainer.scrollTop = messageContainer.scrollHeight;
-                }
-            }, 100);
         } catch (err) {
             console.error("Failed to send message:", err);
-            setError("Failed to send message. Please try again.");
+            setError(err instanceof Error ? err.message : "Failed to send message. Please try again.");
         } finally {
             setSending(false);
         }
@@ -248,7 +262,7 @@ export default function Conversations() {
                                         id="message-container"
                                         className="flex-1 p-6 overflow-y-auto bg-gray-50"
                                     >
-                                        {messages.length === 0 ? (
+                                        {allMessages.length === 0 ? (
                                             <div className="flex items-center justify-center h-full">
                                                 <p className="text-gray-500">
                                                     No messages yet. Start the conversation!
@@ -256,13 +270,12 @@ export default function Conversations() {
                                             </div>
                                         ) : (
                                             <div className="space-y-4">
-                                                {messages.map((message) => {
+                                                {allMessages.map((message) => {
                                                     const isCurrentUser = message.sender.id === client?.id;
                                                     return (
                                                         <div
                                                             key={message.id}
-                                                            className={`flex ${isCurrentUser ? "justify-end" : "justify-start"
-                                                                }`}
+                                                            className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
                                                         >
                                                             <div
                                                                 className={`max-w-[75%] px-4 py-3 rounded-lg ${isCurrentUser
@@ -326,31 +339,53 @@ export default function Conversations() {
                         </div>)}
                 </div>
 
+                {/* Connection Status */}
+                {!isConnected && (
+                    <div className="mb-4">
+                        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
+                            <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <p className="text-sm">
+                                        {reconnectAttempts > 0
+                                            ? `Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`
+                                            : "Real-time connection is not available. Messages may be delayed."}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Error Display */}
                 {error && (
-                    <div
-                        className="mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
-                        role="alert"
-                    >
-                        <span className="block sm:inline">{error}</span>
-                        <button
-                            className="absolute top-0 bottom-0 right-0 px-4 py-3"
-                            onClick={() => setError(null)}
-                        >
-                            <svg
-                                className="h-6 w-6 text-red-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                        </button>
+                    <div className="mb-4">
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+                            <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <p className="text-sm">{error}</p>
+                                </div>
+                                <div className="ml-auto pl-3">
+                                    <button
+                                        onClick={() => setError(null)}
+                                        className="text-red-700 hover:text-red-500"
+                                    >
+                                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

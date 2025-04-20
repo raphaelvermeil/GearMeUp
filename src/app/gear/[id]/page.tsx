@@ -15,7 +15,8 @@ import { useRentalRequest } from '@/hooks/useCreateRentalRequest'
 export default function GearDetailPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const { id } = useParams()
+  const params = useParams()
+  const id = params?.id as string
   const [listing, setListing] = useState<TransformedGearListing | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -172,7 +173,7 @@ export default function GearDetailPage() {
             <h2 className="text-xl font-semibold mb-2">Owner</h2>
             {listing.owner ? (
               <div className="mt-4">
-                <Link 
+                <Link
                   href={`/users/${listing.owner.id}`}
                   className="text-green-600 hover:text-green-700 flex items-center space-x-2"
                 >

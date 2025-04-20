@@ -24,7 +24,7 @@ function ReviewsSection({ clientId }: { clientId: string }) {
     clientId: clientId
   })
 
-  
+
   if (reviewsLoading) {
     return <div>Loading reviews...</div>
   }
@@ -92,12 +92,12 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
     comment: '',
   })
 
-  const { 
-    requests, 
-    loading: requestsLoading, 
+  const {
+    requests,
+    loading: requestsLoading,
     error: requestsError,
     updateRequestStatus,
-    refetchRequests 
+    refetchRequests
   } = useRentalRequests(clientId, role)
 
   const { updateStatus, loading: updateLoading } = useUpdateRentalStatus({
@@ -133,11 +133,11 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
     }
 
     try {
-      
+
       let reviewed;
-      if(role === 'renter') {
+      if (role === 'renter') {
         reviewed = request.owner.id;
-      } else if(role === 'owner') {
+      } else if (role === 'owner') {
         reviewed = request.renter.id;
       } else {
         throw new Error('Invalid role');
@@ -173,21 +173,19 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
             <div className="flex space-x-4">
               <button
                 onClick={() => setRole('renter')}
-                className={`px-4 py-2 rounded ${
-                  role === 'renter'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
+                className={`px-4 py-2 rounded ${role === 'renter'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-200 text-gray-700'
+                  }`}
               >
                 As Renter
               </button>
               <button
                 onClick={() => setRole('owner')}
-                className={`px-4 py-2 rounded ${
-                  role === 'owner'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
+                className={`px-4 py-2 rounded ${role === 'owner'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-200 text-gray-700'
+                  }`}
               >
                 As Owner
               </button>
@@ -210,22 +208,21 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                         {request.gear_listing?.title || 'Untitled Gear'}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Status: <span className={`font-medium ${
-                          request.status === 'approved' ? 'text-green-600' :
+                        Status: <span className={`font-medium ${request.status === 'approved' ? 'text-green-600' :
                           request.status === 'rejected' ? 'text-red-600' :
-                          'text-yellow-600'
-                        }`}>{request.status}</span>
+                            'text-yellow-600'
+                          }`}>{request.status}</span>
                       </p>
                       <p className="text-sm text-gray-500">
                         {role === 'owner' ? 'Requested by: ' : 'Owner: '}
                         <Link
-                          href={`/users/${role === 'owner' 
+                          href={`/users/${role === 'owner'
                             ? request.renter.id
                             : request.owner.id}`}
                           className="font-medium hover:text-green-600"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {role === 'owner' 
+                          {role === 'owner'
                             ? `${request.renter.first_name} ${request.renter.last_name}`
                             : `${request.owner.first_name} ${request.owner.last_name}`
                           }
@@ -244,17 +241,17 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                       >
                         View Details
                       </Link>
-                      <svg 
+                      <svg
                         className={`w-5 h-5 text-gray-500 transition-transform ${expandedRequestId === request.id ? 'transform rotate-180' : ''}`}
-                        fill="none" 
-                        stroke="currentColor" 
+                        fill="none"
+                        stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
                   </div>
-                  
+
                   {/* Expanded Content */}
                   {expandedRequestId === request.id && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
@@ -270,7 +267,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                           <p className="text-sm text-gray-500">
                             Duration: {
                               Math.ceil(
-                                (new Date(request.end_date).getTime() - new Date(request.start_date).getTime()) / 
+                                (new Date(request.end_date).getTime() - new Date(request.start_date).getTime()) /
                                 (1000 * 60 * 60 * 24)
                               )
                             } days
@@ -278,7 +275,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                           <p className="text-sm text-gray-500">
                             Total Price: ${
                               Math.ceil(
-                                (new Date(request.end_date).getTime() - new Date(request.start_date).getTime()) / 
+                                (new Date(request.end_date).getTime() - new Date(request.start_date).getTime()) /
                                 (1000 * 60 * 60 * 24)
                               ) * request.gear_listing?.price
                             }
@@ -291,7 +288,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                           <p className="text-sm text-gray-500 mt-1">{request.gear_listing.description}</p>
                         </div>
                       )}
-                      
+
                       {/* Status Update Section for Owners */}
                       {role === 'owner' && request.status === 'pending' && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
@@ -340,7 +337,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
 
                       {/* Review Section */}
                       {role === 'renter' && request.status === 'completed' && (
-                        <div 
+                        <div
                           className="mt-4 pt-4 border-t border-gray-200"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -403,25 +400,22 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
 }
 
 export default function UserProfilePage() {
-  const { id } = useParams()
+  const params = useParams()
+  const id = params?.id as string
   const { user } = useAuth()
   const [client, setClient] = useState<DirectusClientUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   // Fetch user's gear listings
-  const { 
-    listings: allListings, 
-    loading: listingsLoading, 
-    error: listingsError 
+  const {
+    listings: allListings,
+    loading: listingsLoading,
+    error: listingsError
   } = useGearListings()
-
-
-
 
   // Filter listings client-side for the specific user
   const listings = allListings.filter(listing => listing.owner?.id == id)
-
 
   console.log(`listings: ${listings}`)
 
@@ -446,7 +440,7 @@ export default function UserProfilePage() {
       }
     }
 
-      if (id) {
+    if (id) {
       fetchClient()
     }
   }, [id])
@@ -472,7 +466,6 @@ export default function UserProfilePage() {
   }
 
   const isOwnProfile = (user?.id === client?.user.id) && (user?.id !== undefined)
-
 
   return (
     <div className="min-h-screen bg-gray-50">
