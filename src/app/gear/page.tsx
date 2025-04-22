@@ -3,10 +3,11 @@ import { useRouter } from 'next/navigation';
 
 import { useState } from 'react'
 import { useGearListings, type SortOption } from '@/hooks/useGearListings'
-import type { TransformedGearListing } from '@/lib/directus'
+import type { DirectusGearListing } from '@/lib/directus'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAssetURL } from '@/lib/directus'
 import { set } from 'react-hook-form'
 
 const categories = [
@@ -135,21 +136,21 @@ export default function GearPage() {
         {/* Search Bar */}
         <div className="mb-8">
           <form onSubmit={handleSearchSubmit} className="relative">
-              <input
-                type="text"
-                placeholder="Search for gear by title or description..."
-                className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-4 pl-12"
-                value={searchInput}
-                onChange={handleSearchInputChange}
-              />
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <input
+              type="text"
+              placeholder="Search for gear by title or description..."
+              className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-4 pl-12"
+              value={searchInput}
+              onChange={handleSearchInputChange}
+            />
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
               {searchInput && (
-                <button 
+                <button
                   type="button"
                   className="p-1 mr-2 text-gray-400 hover:text-gray-600"
                   onClick={clearSearch}
@@ -159,7 +160,7 @@ export default function GearPage() {
                   </svg>
                 </button>
               )}
-              <button 
+              <button
                 type="submit"
                 className="py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
               >
@@ -237,7 +238,7 @@ export default function GearPage() {
                 {listing.gear_images && listing.gear_images.length > 0 ? (
                   <div className="relative w-full h-64">
                     <Image
-                      src={listing.gear_images[0].url}
+                      src={getAssetURL(listing.gear_images[0].directus_files_id.id)}
                       alt={listing.title}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -286,8 +287,8 @@ export default function GearPage() {
                 key={page}
                 onClick={() => handlePageChange(page)}
                 className={`px-4 py-2 rounded-lg transition-colors ${currentPage === page
-                    ? 'bg-green-600 text-white'
-                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-green-600 text-white'
+                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
               >
                 {page}

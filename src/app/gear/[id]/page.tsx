@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getGearListing, getAssetURL, getOrCreateClient, createConversation, sendMessage } from '@/lib/directus'
 import { useAuth } from '@/contexts/AuthContext'
-import type { TransformedGearListing } from '@/lib/directus'
+import type { DirectusGearListing } from '@/lib/directus'
 import Link from 'next/link'
 import Image from 'next/image'
 import DatePicker from 'react-datepicker'
@@ -17,7 +17,7 @@ export default function GearDetailPage() {
   const router = useRouter()
   const params = useParams()
   const id = params?.id as string
-  const [listing, setListing] = useState<TransformedGearListing | null>(null)
+  const [listing, setListing] = useState<DirectusGearListing | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -113,7 +113,7 @@ export default function GearDetailPage() {
           {listing.gear_images && listing.gear_images.length > 0 && (
             <div className="relative w-full aspect-video">
               <Image
-                src={listing.gear_images[selectedImageIndex].url}
+                src={getAssetURL(listing.gear_images[selectedImageIndex].directus_files_id.id)}
                 alt={`${listing.title} - Image ${selectedImageIndex + 1}`}
                 fill
                 className="rounded-lg shadow-md object-cover"
@@ -132,7 +132,7 @@ export default function GearDetailPage() {
                     }`}
                 >
                   <Image
-                    src={image.url}
+                    src={getAssetURL(image.directus_files_id.id)}
                     alt={`${listing.title} - Thumbnail ${index + 1}`}
                     fill
                     className="object-cover"

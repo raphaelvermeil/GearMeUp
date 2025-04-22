@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { getGearListings, getOrCreateClient } from "../lib/directus";
-import type { TransformedGearListing } from "../lib/directus";
+import type { DirectusGearListing } from "../lib/directus";
 
 export function useUserListings(userId: string) {
-  const [listings, setListings] = useState<TransformedGearListing[]>([]);
+  const [listings, setListings] = useState<DirectusGearListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 

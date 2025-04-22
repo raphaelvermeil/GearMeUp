@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getGearListings } from "../lib/directus";
-import type { TransformedGearListing } from "../lib/directus";
+import type { DirectusGearListing } from "../lib/directus";
 
 export type SortOption =
   | "price_asc"
@@ -28,7 +28,7 @@ export function useGearListings({
   itemsPerPage = 9,
   sort = "date_created_desc",
 }: UseGearListingsOptions = {}) {
-  const [listings, setListings] = useState<TransformedGearListing[]>([]);
+  const [listings, setListings] = useState<DirectusGearListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [totalPages, setTotalPages] = useState(1);

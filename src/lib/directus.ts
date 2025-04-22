@@ -61,21 +61,6 @@ export interface DirectusGearListing {
   }>;
 }
 
-export interface TransformedGearListing {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  condition: string;
-  location: string;
-  category: string;
-  gear_images: {
-    id: string;
-    url: string;
-  }[];
-  owner?: DirectusClientUser;
-}
-
 export interface DirectusRentalRequest {
   id: string;
   gear_listing: DirectusGearListing;
@@ -275,40 +260,8 @@ export const getGearListings = async ({
             : "-price",
       })
     )) as DirectusGearListing[];
-    console.log("response hello 123", response);
-    // Transform the response to match our TransformedGearListing interface
-    const transformedListings = response.map((listing) => ({
-      id: listing.id,
-      title: listing.title,
-      description: listing.description,
-      price: listing.price,
-      condition: listing.condition,
-      location: listing.location,
-      category: listing.category,
-      gear_images: listing.gear_images.map((image) => ({
-        id: image.id,
-        url: getAssetURL(image.directus_files_id.id),
-      })),
-      owner: listing.owner
-        ? {
-            id: listing.owner.id,
-            user: {
-              id: listing.owner.user.id,
-              first_name: listing.owner.user.first_name,
-              last_name: listing.owner.user.last_name,
-              email: listing.owner.user.email,
-              role: listing.owner.user.role,
-              status: listing.owner.user.status,
-              created_at: listing.owner.user.created_at,
-              updated_at: listing.owner.user.updated_at,
-            },
-            first_name: listing.owner.first_name,
-            last_name: listing.owner.last_name,
-          }
-        : undefined,
-    }));
 
-    return transformedListings;
+    return response;
   } catch (error) {
     console.error("Error fetching gear listings:", error);
     throw error;
@@ -328,41 +281,7 @@ export const getGearListing = async (id: string) => {
       })
     )) as DirectusGearListing;
 
-    console.log("Gear listing response backend", response);
-
-    // Transform the response to match our interface
-    const transformedListing: TransformedGearListing = {
-      id: response.id,
-      title: response.title,
-      description: response.description,
-      price: response.price,
-      condition: response.condition,
-      location: response.location,
-      category: response.category,
-      gear_images: response.gear_images.map((image) => ({
-        id: image.id,
-        url: getAssetURL(image.directus_files_id.id),
-      })),
-      owner: response.owner
-        ? {
-            id: response.owner.id,
-            user: {
-              id: response.owner.user.id,
-              first_name: response.owner.user.first_name,
-              last_name: response.owner.user.last_name,
-              email: response.owner.user.email,
-              role: response.owner.user.role,
-              status: response.owner.user.status,
-              created_at: response.owner.user.created_at,
-              updated_at: response.owner.user.updated_at,
-            },
-            first_name: response.owner.first_name,
-            last_name: response.owner.last_name,
-          }
-        : undefined,
-    };
-
-    return transformedListing;
+    return response;
   } catch (error) {
     console.error("Error getting gear listing:", error);
     throw error;
