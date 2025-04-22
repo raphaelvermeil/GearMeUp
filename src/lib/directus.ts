@@ -13,7 +13,9 @@ import {
   readMe,
   uploadFiles,
   auth,
+  updateItems,
 } from "@directus/sdk";
+import { read } from "fs";
 import { get } from "http";
 
 // Use the correct Directus URL directly
@@ -109,6 +111,14 @@ export interface DirectusMessage {
   sender: DirectusClientUser;
   message: string;
   date_created: string;
+}
+export interface DirectusNotification {
+  id: string;
+  client: DirectusClientUser;
+  conversation: DirectusConversation;
+  request: DirectusRentalRequest;
+  date_created: string;
+  read: boolean;
 }
 
 interface DirectusResponse<T> {
@@ -269,10 +279,10 @@ export const getGearListings = async ({
           sort === "date_created_desc"
             ? "-date_created"
             : sort === "date_created_asc"
-            ? "date_created"
-            : sort === "price_asc"
-            ? "price"
-            : "-price",
+              ? "date_created"
+              : sort === "price_asc"
+                ? "price"
+                : "-price",
       })
     )) as DirectusGearListing[];
     console.log("response hello 123", response);
@@ -291,20 +301,20 @@ export const getGearListings = async ({
       })),
       owner: listing.owner
         ? {
-            id: listing.owner.id,
-            user: {
-              id: listing.owner.user.id,
-              first_name: listing.owner.user.first_name,
-              last_name: listing.owner.user.last_name,
-              email: listing.owner.user.email,
-              role: listing.owner.user.role,
-              status: listing.owner.user.status,
-              created_at: listing.owner.user.created_at,
-              updated_at: listing.owner.user.updated_at,
-            },
-            first_name: listing.owner.first_name,
-            last_name: listing.owner.last_name,
-          }
+          id: listing.owner.id,
+          user: {
+            id: listing.owner.user.id,
+            first_name: listing.owner.user.first_name,
+            last_name: listing.owner.user.last_name,
+            email: listing.owner.user.email,
+            role: listing.owner.user.role,
+            status: listing.owner.user.status,
+            created_at: listing.owner.user.created_at,
+            updated_at: listing.owner.user.updated_at,
+          },
+          first_name: listing.owner.first_name,
+          last_name: listing.owner.last_name,
+        }
         : undefined,
     }));
 
@@ -345,20 +355,20 @@ export const getGearListing = async (id: string) => {
       })),
       owner: response.owner
         ? {
-            id: response.owner.id,
-            user: {
-              id: response.owner.user.id,
-              first_name: response.owner.user.first_name,
-              last_name: response.owner.user.last_name,
-              email: response.owner.user.email,
-              role: response.owner.user.role,
-              status: response.owner.user.status,
-              created_at: response.owner.user.created_at,
-              updated_at: response.owner.user.updated_at,
-            },
-            first_name: response.owner.first_name,
-            last_name: response.owner.last_name,
-          }
+          id: response.owner.id,
+          user: {
+            id: response.owner.user.id,
+            first_name: response.owner.user.first_name,
+            last_name: response.owner.user.last_name,
+            email: response.owner.user.email,
+            role: response.owner.user.role,
+            status: response.owner.user.status,
+            created_at: response.owner.user.created_at,
+            updated_at: response.owner.user.updated_at,
+          },
+          first_name: response.owner.first_name,
+          last_name: response.owner.last_name,
+        }
         : undefined,
     };
 
@@ -461,10 +471,34 @@ export const createRentalRequest = async (requestData: {
   try {
     const response = await directus.request(
       createItem("rental_requests", requestData)
-    );
-    return response as DirectusRentalRequest;
+    ) as DirectusRentalRequest;
+    try {
+      const currentRequest = await getRentalRequest(response.id);
+      const response2 = await directus.request(createItem("notifications", {
+        client: requestData.owner,
+        request: currentRequest.id,
+        read: false,
+      }))
+    } catch (error) {
+      console.error("Error sending notif:", error);
+    }
+    return response;
   } catch (error) {
     console.error("Error creating rental request:", error);
+    throw error;
+  }
+};
+export const getRentalRequest = async (id: string) => {
+  try {
+    const response = await directus.request(
+      readItem("rental_requests", id, {
+        fields: ["*", "gear_listing.*", "renter.*", "owner.*"],
+      })
+    );
+    return response as DirectusRentalRequest;
+  }
+  catch (error) {
+    console.error("Error getting rental request:", error);
     throw error;
   }
 };
@@ -623,6 +657,16 @@ export const updateRentalRequestStatus = async (
         status,
       })
     );
+    try {
+      const currentRequest = await getRentalRequest(requestId);
+      const response2 = await directus.request(createItem("notifications", {
+        client: (status === "approved" || status === "rejected") ? currentRequest.renter.id : currentRequest.owner.id,
+        request: currentRequest.id,
+        read: false,
+      }))
+    } catch (error) {
+      console.error("Error sending notif:", error);
+    }
     return response as DirectusRentalRequest;
   } catch (error) {
     console.error("Error updating rental request status:", error);
@@ -736,10 +780,23 @@ export const sendMessage = async (data: {
 }) => {
   try {
     const response = await directus.request(createItem("messages", data));
+    try {
+      const currentConversation = await getConversation(data.conversation);
+      const response2 = await directus.request(createItem("notifications", {
+        client: data.sender === currentConversation.user_1.id ? currentConversation.user_2.id : currentConversation.user_1.id,
+        conversation: currentConversation.id,
+        read: false,
+      }))
+    } catch (error) {
+      console.error("Error sending notif:", error);
+    }
     return response as DirectusMessage;
+
   } catch (error) {
     console.error("Error sending message:", error);
     throw error;
+  }
+  finally {
   }
 };
 
@@ -772,6 +829,42 @@ export const findConversation = async (
       : null;
   } catch (error) {
     console.error("Error finding conversation:", error);
+    throw error;
+  }
+};
+export const getNotifications = async (clientID: string) => {
+  try {
+    const response = (await directus.request(
+      readItems("notifications", {
+        filter: {
+          client: clientID
+        },
+        fields: [
+          "*",
+          "client.*",
+          "conversation.*",
+          "request.*",
+        ],
+        sort: ["-date_created"],
+      })
+    )) as DirectusNotification[];
+    console.log("Notifications response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error getting notif (directus.ts):", error);
+    throw error;
+  }
+};
+export const markNotificationAsRead = async (notificationID: string, isRead: boolean = true) => {
+  try {
+    const response = await directus.request(
+      updateItem("notifications", notificationID, {
+        read: isRead
+      })
+    );
+    return response;
+  } catch (error) {
+    console.error("Error updating notification read status (directus.ts):", error);
     throw error;
   }
 };
