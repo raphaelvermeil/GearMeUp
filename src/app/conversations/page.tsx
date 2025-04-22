@@ -74,7 +74,7 @@ export default function Conversations() {
         if (conversations.length > 0 && !selectedConversation) {
             setSelectedConversation(conversations[0]);
         }
-    }, [conversations]);
+    }, [conversations, selectedConversation]);
 
     useEffect(() => {
         setTimeout(() => {
