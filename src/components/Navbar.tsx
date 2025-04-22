@@ -156,6 +156,7 @@ const Navbar = () => {
           {user && (
                 <Link
                   href="/gear/new"
+                  onClick={() => setIsMenuOpen(false)}
                   className={`${
                     pathname === '/gear/new'
                     ? 'bg-green-50 border-green-500 text-green-700'
@@ -168,6 +169,7 @@ const Navbar = () => {
               {user && (
                 <Link
                   href="/conversations"
+                  onClick={() => setIsMenuOpen(false)}
                   className={`${
                     pathname === '/conversations'
                     ? 'bg-green-50 border-green-500 text-green-700'
