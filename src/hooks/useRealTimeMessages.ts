@@ -104,6 +104,15 @@ export function useRealTimeMessages(conversationId: string) {
         conversationId,
         (message: AblyMessage) => {
           console.log("New message received:", message);
+          // Only process messages for this conversation
+          if (message.conversationId !== conversationId) {
+            console.log(
+              "Ignoring message for different conversation:",
+              message.conversationId
+            );
+            return;
+          }
+
           setMessages((prev) => {
             // If we've already added this message locally (we sent it), don't add it again
             if (sentMessagesRef.current.has(message.id)) {
@@ -138,6 +147,11 @@ export function useRealTimeMessages(conversationId: string) {
     connect();
     return cleanup;
   }, [conversationId, connect, cleanup]);
+
+  // Reset messages when conversation changes
+  useEffect(() => {
+    setMessages([]);
+  }, [conversationId]);
 
   const sendMessage = useCallback(
     async (message: string, senderId: string) => {

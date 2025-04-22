@@ -22,8 +22,19 @@ export function getAblyInstance() {
         "a.ably-realtime.com",
         "b.ably-realtime.com",
         "c.ably-realtime.com",
+        "d.ably-realtime.com",
+        "e.ably-realtime.com",
       ],
       autoConnect: true,
+      recover: function (lastConnectionDetails, cb) {
+        console.log("Attempting to recover connection:", lastConnectionDetails);
+        cb(true); // true to recover, false to not recover
+      },
+      environment:
+        process.env.NODE_ENV === "production" ? "production" : "development",
+      useBinaryProtocol: true,
+      queueMessages: true,
+      idempotentRestPublishing: true,
     });
 
     ably.connection.on((stateChange: Ably.ConnectionStateChange) => {
@@ -33,6 +44,17 @@ export function getAblyInstance() {
         reason: stateChange.reason,
         retryIn: stateChange.retryIn,
       });
+
+      // Additional handling for production environment
+      if (process.env.NODE_ENV === "production") {
+        if (
+          stateChange.current === "failed" ||
+          stateChange.current === "suspended"
+        ) {
+          console.error("Connection issue in production:", stateChange.reason);
+          // You might want to implement additional error reporting here
+        }
+      }
     });
 
     ably.connection.on("failed", (stateChange: Ably.ConnectionStateChange) => {
@@ -96,11 +118,21 @@ async function ensureConnected(timeout = 10000): Promise<void> {
   return connectionPromise;
 }
 
+export interface AblyMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  message: string;
+  timestamp: string;
+}
+
 export function getChannelInstance(channelId: string) {
   try {
     const ably = getAblyInstance();
     const channelName = `chat:${channelId}`;
-    const channel = ably.channels.get(channelName);
+    const channel = ably.channels.get(channelName, {
+      modes: ["subscribe", "publish"],
+    });
 
     channel.on((stateChange: Ably.ChannelStateChange) => {
       console.log(
@@ -119,15 +151,11 @@ export function getChannelInstance(channelId: string) {
   }
 }
 
-export interface AblyMessage {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  message: string;
-  timestamp: string;
-}
-
 export async function publishMessage(channelId: string, message: AblyMessage) {
+  if (message.conversationId !== channelId) {
+    throw new Error("Message conversation ID does not match channel ID");
+  }
+
   try {
     await ensureConnected(15000);
     const channel = getChannelInstance(channelId);
@@ -139,9 +167,12 @@ export async function publishMessage(channelId: string, message: AblyMessage) {
 
       const publish = () => {
         try {
-          channel.publish("message", message);
+          channel.publish({
+            name: "message",
+            data: message,
+          });
           clearTimeout(timer);
-          console.log("Message published successfully");
+          console.log("Message published successfully to channel:", channelId);
           resolve();
         } catch (error) {
           clearTimeout(timer);
@@ -179,8 +210,17 @@ export function subscribeToMessages(
       const onAttached = () => {
         clearTimeout(timer);
         const messageHandler = (message: Ably.Message) => {
+          const messageData = message.data as AblyMessage;
+          if (messageData.conversationId !== channelId) {
+            console.warn("Received message for wrong conversation, ignoring:", {
+              expected: channelId,
+              received: messageData.conversationId,
+            });
+            return;
+          }
+
           console.log(`Received message on channel ${channelId}:`, message);
-          callback(message.data as AblyMessage);
+          callback(messageData);
         };
 
         channel.subscribe("message", messageHandler);
