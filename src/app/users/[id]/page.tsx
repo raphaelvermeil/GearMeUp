@@ -13,6 +13,7 @@ import Image from 'next/image'
 import { useClient } from '@/hooks/useClient'
 import { useUpdateRentalStatus } from '@/hooks/useUpdateRentalStatus'
 import { useCreateReview } from '@/hooks/useCreateReview'
+import { getAssetURL } from '@/lib/directus'
 
 // Reviews component that only renders when we have a clientId
 function ReviewsSection({ clientId }: { clientId: string }) {
@@ -499,7 +500,7 @@ export default function UserProfilePage() {
                     {listing.gear_images && listing.gear_images[0] && (
                       <div className="relative h-48">
                         <Image
-                          src={listing.gear_images[0].url}
+                          src={getAssetURL(listing.gear_images[0].directus_files_id.id)}
                           alt={listing.title}
                           fill
                           className="object-cover"
