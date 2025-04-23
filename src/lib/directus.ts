@@ -15,6 +15,7 @@ import {
   auth,
 } from "@directus/sdk";
 import { get } from "http";
+import { geocodeAddress } from "./geocoding";
 
 // Use the correct Directus URL directly
 const DIRECTUS_URL = "https://creative-blini-b15912.netlify.app";
@@ -140,11 +141,15 @@ export const register = async (
   email: string,
   password: string,
   firstName: string,
-  lastName: string
+  lastName: string,
+  address: string
 ) => {
   try {
-    // Create the user
+    // Geocode the address first
+    const location = await geocodeAddress(address);
+    const locationString = `${location.latitude},${location.longitude}`;
 
+    // Create the user
     const userResponse = await directus.request(
       createUser({
         email,
@@ -152,6 +157,8 @@ export const register = async (
         first_name: firstName,
         last_name: lastName,
         role: "5886bdc4-8845-49f5-9db7-9073390e1e77",
+        address,
+        location: locationString,
       })
     );
 

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ably/chat": "^0.5.1",
+    "@alloc/quick-lru": "^5.2.0",
     "@directus/sdk": "^16.1.1",
     "@types/node": "20.11.24",
     "@types/react": "18.2.61",
@@ -31,6 +32,7 @@
     "typescript": "5.3.3"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "@types/react-datepicker": "^4.19.4",
     "@types/socket.io": "^3.0.2"
   }
