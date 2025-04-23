@@ -13,9 +13,12 @@ import {
   readMe,
   uploadFiles,
   auth,
+  updateItems,
 } from "@directus/sdk";
+import { read } from "fs";
 import { get } from "http";
 import { geocodeAddress } from "./geocoding";
+import { publishMessage } from "./ably";
 
 // Use the correct Directus URL directly
 const DIRECTUS_URL = "https://creative-blini-b15912.netlify.app";
@@ -95,6 +98,14 @@ export interface DirectusMessage {
   sender: DirectusClientUser;
   message: string;
   date_created: string;
+}
+export interface DirectusNotification {
+  id: string;
+  client: DirectusClientUser;
+  conversation: DirectusConversation;
+  request: DirectusRentalRequest;
+  date_created: string;
+  read: boolean;
 }
 
 interface DirectusResponse<T> {
@@ -385,12 +396,34 @@ export const createRentalRequest = async (requestData: {
   end_date: string;
 }) => {
   try {
-    const response = await directus.request(
+    const response = (await directus.request(
       createItem("rental_requests", requestData)
+    )) as DirectusRentalRequest;
+    try {
+      // Create and publish notification
+      await createAndPublishNotification({
+        client: requestData.owner,
+        request: response.id,
+      });
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
+    return response;
+  } catch (error) {
+    console.error("Error creating rental request:", error);
+    throw error;
+  }
+};
+export const getRentalRequest = async (id: string) => {
+  try {
+    const response = await directus.request(
+      readItem("rental_requests", id, {
+        fields: ["*", "gear_listing.*", "renter.*", "owner.*"],
+      })
     );
     return response as DirectusRentalRequest;
   } catch (error) {
-    console.error("Error creating rental request:", error);
+    console.error("Error getting rental request:", error);
     throw error;
   }
 };
@@ -549,6 +582,22 @@ export const updateRentalRequestStatus = async (
         status,
       })
     );
+    try {
+      const currentRequest = await getRentalRequest(requestId);
+      // Determine which user should receive the notification
+      const recipientId =
+        status === "approved" || status === "rejected"
+          ? currentRequest.renter.id
+          : currentRequest.owner.id;
+
+      // Create and publish notification
+      await createAndPublishNotification({
+        client: recipientId,
+        request: currentRequest.id,
+      });
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
     return response as DirectusRentalRequest;
   } catch (error) {
     console.error("Error updating rental request status:", error);
@@ -662,10 +711,27 @@ export const sendMessage = async (data: {
 }) => {
   try {
     const response = await directus.request(createItem("messages", data));
+    try {
+      const currentConversation = await getConversation(data.conversation);
+      // Get the recipient ID (the other user in the conversation)
+      const recipientId =
+        data.sender === currentConversation.user_1.id
+          ? currentConversation.user_2.id
+          : currentConversation.user_1.id;
+
+      // Create and publish notification
+      await createAndPublishNotification({
+        client: recipientId,
+        conversation: currentConversation.id,
+      });
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
     return response as DirectusMessage;
   } catch (error) {
     console.error("Error sending message:", error);
     throw error;
+  } finally {
   }
 };
 
@@ -698,6 +764,75 @@ export const findConversation = async (
       : null;
   } catch (error) {
     console.error("Error finding conversation:", error);
+    throw error;
+  }
+};
+export const getNotifications = async (clientID: string) => {
+  try {
+    const response = (await directus.request(
+      readItems("notifications", {
+        filter: {
+          client: clientID,
+        },
+        fields: ["*", "client.*", "conversation.*", "request.*"],
+        sort: ["-date_created"],
+      })
+    )) as DirectusNotification[];
+    console.log("Notifications response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error getting notif (directus.ts):", error);
+    throw error;
+  }
+};
+export const markNotificationAsRead = async (
+  notificationID: string,
+  isRead: boolean = true
+) => {
+  try {
+    const response = await directus.request(
+      updateItem("notifications", notificationID, {
+        read: isRead,
+      })
+    );
+    return response;
+  } catch (error) {
+    console.error(
+      "Error updating notification read status (directus.ts):",
+      error
+    );
+    throw error;
+  }
+};
+// function to create and publish notifications
+export const createAndPublishNotification = async (data: {
+  client: string;
+  conversation?: string | null;
+  request?: string | null;
+}) => {
+  try {
+    // Create the notification in Directus
+    const response = await directus.request(
+      createItem("notifications", {
+        client: data.client,
+        conversation: data.conversation || null,
+        request: data.request || null,
+        read: false,
+      })
+    );
+
+    // Publish to Ably channel for real-time updates
+    await publishMessage(`notifications:${data.client}`, {
+      id: crypto.randomUUID(),
+      conversationId: `notifications:${data.client}`,
+      senderId: "system",
+      message: "new_notification",
+      timestamp: new Date().toISOString(),
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Error creating and publishing notification:", error);
     throw error;
   }
 };

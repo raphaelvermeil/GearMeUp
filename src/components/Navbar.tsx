@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from "@/contexts/AuthContext"
 import { useClient } from '@/hooks/useClient'
+import NotificationDropdown from './NotificationDropdown'
+
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
@@ -67,17 +69,22 @@ const Navbar = () => {
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
+            {user && (
+              <div className="mr-4">
+                <NotificationDropdown />
+              </div>
+            )}
             {user ? (
               <div className="flex items-center space-x-4">
                 <Link
                   href={`/users/${client?.id}`}
                   className="text-gray-700 hover:text-gray-900"
                 >
-                  Profile
-                </Link>
-                <span className="text-gray-700">
+                  <span className="text-gray-700">
                   {client?.user.first_name} {client?.user.last_name}
                 </span>
+                </Link>
+                
                 <button
                   onClick={handleLogout}
                   className="bg-white text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium"
@@ -95,6 +102,11 @@ const Navbar = () => {
             )}
           </div>
           <div className="-mr-2 flex items-center sm:hidden">
+            {user && (
+              <div className="mr-2">
+                <NotificationDropdown />
+              </div>
+            )}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500"
@@ -214,4 +226,4 @@ const Navbar = () => {
   )
 }
 
-export default Navbar 
+export default Navbar
