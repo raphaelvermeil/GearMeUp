@@ -1,12 +1,11 @@
 'use client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bell } from 'lucide-react';
 import Link from 'next/link';
 import { getNotifications, DirectusNotification, markNotificationAsRead } from '@/lib/directus';
 import { useClient } from '@/hooks/useClient';
-import { constants } from 'buffer';
-
+import { subscribeToMessages, getChannelInstance } from '@/lib/ably';
 
 const NotificationDropdown = () => {
     const { user } = useAuth();
@@ -16,26 +15,70 @@ const NotificationDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [unreadCount, setUnreadCount] = useState(0);
+    const unsubscribeRef = useRef<(() => void) | null>(null);
 
-    // Count unread notifications
-    //const unreadCount = notifications.filter(n => !n.read).length;
+    // Fetch notifications from the server
+    const fetchNotifications = useCallback(async () => {
+        if (!client?.id||reload===null) return;
 
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            try {
-                const userNotifications = await getNotifications(client?.id || '');
-                setNotifications(userNotifications);
-                setUnreadCount(userNotifications.filter(n => !n.read).length);
-                console.log('Fetched notifications:', userNotifications);
-            }
-            catch (error) {
-                console.error('Error fetching notifications:', error);
-            }
-            finally { }
-
+        try {
+            const userNotifications = await getNotifications(client.id);
+            setNotifications(userNotifications);
+            setUnreadCount(userNotifications.filter(n => !n.read).length);
+            console.log('Fetched notifications:', userNotifications);
         }
+        catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    }, [client?.id, reload]);
+
+    // Set up Ably subscription for real-time notifications
+    useEffect(() => {
+        if (!client?.id) return;
+
+        const notificationChannelId = `notifications:${client.id}`;
+
+        const setupSubscription = async () => {
+            try {
+                // Unsubscribe from previous subscription if exists
+                if (unsubscribeRef.current) {
+                    unsubscribeRef.current();
+                    unsubscribeRef.current = null;
+                }
+
+                // Subscribe to the notifications channel
+                const unsubscribe = await subscribeToMessages(notificationChannelId, (message) => {
+                    console.log('Received notification update:', message);
+                    // Refresh notifications when a new one is received
+                    fetchNotifications();
+                });
+
+                unsubscribeRef.current = unsubscribe;
+            } catch (error) {
+                console.error('Error setting up notification subscription:', error);
+            }
+        };
+
+        setupSubscription();
+
+        // Initial fetch
         fetchNotifications();
-    }, [client?.id, isOpen, reload]);
+
+        return () => {
+            // Clean up subscription on unmount
+            if (unsubscribeRef.current) {
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+        };
+    }, [client?.id, fetchNotifications]);
+
+    // Refresh notifications when dropdown is opened or reload state changes
+    useEffect(() => {
+        if (isOpen) {
+            fetchNotifications();
+        }
+    }, [isOpen, fetchNotifications, reload]);
 
     // Handle clicking outside to close dropdown
     useEffect(() => {
@@ -54,12 +97,10 @@ const NotificationDropdown = () => {
     // Mark notification as read
     const markAsRead = async (id: string) => {
         try {
-            const response = await markNotificationAsRead(id);
+            await markNotificationAsRead(id);
+            setReload(!reload); // Trigger a reload to update the notification list
         } catch (error) {
             console.error('Error marking notification as read:', error);
-        }
-        finally {
-            setReload(!reload);
         }
     };
 
@@ -109,13 +150,11 @@ const NotificationDropdown = () => {
                         <>
                             <div className="divide-y divide-gray-200">
                                 {notifications.map((notification) => (
-                                    console.log('Conv:', notification.conversation),
                                     <Link
                                         href={notification.conversation !== null ? '/conversations' : `/users/${client?.id}`}
                                         key={notification.id}
                                         onClick={() => handleNotificationClick(notification.id)}
-                                        className={`block w-full text-left px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out ${!notification.read ? 'bg-blue-50' : ''
-                                            }`}
+                                        className={`block w-full text-left px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out ${!notification.read ? 'bg-blue-50' : ''}`}
                                     >
                                         <div className="flex justify-between">
                                             <p className={`text-sm ${!notification.read ? 'font-medium' : 'text-gray-600'}`}>

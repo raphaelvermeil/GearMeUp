@@ -17,6 +17,7 @@ import {
 } from "@directus/sdk";
 import { read } from "fs";
 import { get } from "http";
+import { publishMessage } from './ably';
 
 // Use the correct Directus URL directly
 const DIRECTUS_URL = "https://creative-blini-b15912.netlify.app";
@@ -392,14 +393,13 @@ export const createRentalRequest = async (requestData: {
       createItem("rental_requests", requestData)
     ) as DirectusRentalRequest;
     try {
-      const currentRequest = await getRentalRequest(response.id);
-      const response2 = await directus.request(createItem("notifications", {
+      // Create and publish notification
+      await createAndPublishNotification({
         client: requestData.owner,
-        request: currentRequest.id,
-        read: false,
-      }))
+        request: response.id,
+      });
     } catch (error) {
-      console.error("Error sending notif:", error);
+      console.error("Error sending notification:", error);
     }
     return response;
   } catch (error) {
@@ -578,13 +578,18 @@ export const updateRentalRequestStatus = async (
     );
     try {
       const currentRequest = await getRentalRequest(requestId);
-      const response2 = await directus.request(createItem("notifications", {
-        client: (status === "approved" || status === "rejected") ? currentRequest.renter.id : currentRequest.owner.id,
+      // Determine which user should receive the notification
+      const recipientId = (status === "approved" || status === "rejected") 
+        ? currentRequest.renter.id 
+        : currentRequest.owner.id;
+      
+      // Create and publish notification
+      await createAndPublishNotification({
+        client: recipientId,
         request: currentRequest.id,
-        read: false,
-      }))
+      });
     } catch (error) {
-      console.error("Error sending notif:", error);
+      console.error("Error sending notification:", error);
     }
     return response as DirectusRentalRequest;
   } catch (error) {
@@ -701,13 +706,19 @@ export const sendMessage = async (data: {
     const response = await directus.request(createItem("messages", data));
     try {
       const currentConversation = await getConversation(data.conversation);
-      const response2 = await directus.request(createItem("notifications", {
-        client: data.sender === currentConversation.user_1.id ? currentConversation.user_2.id : currentConversation.user_1.id,
+      // Get the recipient ID (the other user in the conversation)
+      const recipientId = data.sender === currentConversation.user_1.id 
+        ? currentConversation.user_2.id 
+        : currentConversation.user_1.id;
+      
+      // Create and publish notification
+      await createAndPublishNotification({
+        client: recipientId,
         conversation: currentConversation.id,
-        read: false,
-      }))
+        
+      });
     } catch (error) {
-      console.error("Error sending notif:", error);
+      console.error("Error sending notification:", error);
     }
     return response as DirectusMessage;
 
@@ -784,6 +795,36 @@ export const markNotificationAsRead = async (notificationID: string, isRead: boo
     return response;
   } catch (error) {
     console.error("Error updating notification read status (directus.ts):", error);
+    throw error;
+  }
+};
+// function to create and publish notifications
+export const createAndPublishNotification = async (data: {
+  client: string;
+  conversation?: string | null;
+  request?: string | null;
+}) => {
+  try {
+    // Create the notification in Directus
+    const response = await directus.request(createItem("notifications", {
+      client: data.client,
+      conversation: data.conversation || null,
+      request: data.request || null,
+      read: false,
+    }));
+    
+    // Publish to Ably channel for real-time updates
+    await publishMessage(`notifications:${data.client}`, {
+      id: crypto.randomUUID(),
+      conversationId: `notifications:${data.client}`,
+      senderId: 'system',
+      message: 'new_notification',
+      timestamp: new Date().toISOString()
+    });
+    
+    return response;
+  } catch (error) {
+    console.error("Error creating and publishing notification:", error);
     throw error;
   }
 };
