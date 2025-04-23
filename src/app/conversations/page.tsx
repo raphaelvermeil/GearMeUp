@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
     DirectusClientUser,
@@ -48,6 +48,24 @@ export default function Conversations() {
         loading: messagesLoading,
         error: messagesError,
     } = useConversationMessages(selectedConversation?.id || "", refreshMessages);
+
+    //coming from notifDropdown
+    const searchParams = useSearchParams();
+    const selectedConversationIdParam = searchParams.get("selectedConversationId");
+    useEffect(() => {
+        if (selectedConversationIdParam && conversations.length > 0) {
+            // Try adding console.log with more detailed type information
+            console.log("Selected ID (type):", selectedConversationIdParam, typeof selectedConversationIdParam);
+            console.log("Conversation ID (type):", conversations[1].id, typeof conversations[1].id);
+
+            const targetConversation = conversations.find(conv => String(conv.id) === selectedConversationIdParam);
+            console.log("Target Conversation:", targetConversation);
+            if (targetConversation) {
+                setSelectedConversation(targetConversation);
+            }
+        }
+    }, [selectedConversationIdParam, conversations]);
+
     // ALBY
     const {
         messages: realTimeMessages,
@@ -67,7 +85,6 @@ export default function Conversations() {
             new Date(a.date_created).getTime() - new Date(b.date_created).getTime()
         );
 
-    console.log(`conversations: ${conversations.length}`);
 
     useEffect(() => {
         console.log("Conversations changed");

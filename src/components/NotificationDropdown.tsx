@@ -19,11 +19,12 @@ const NotificationDropdown = () => {
 
     // Fetch notifications from the server
     const fetchNotifications = useCallback(async () => {
-        if (!client?.id||reload===null) return;
+        if (!client?.id || reload === null) return;
 
         try {
             const userNotifications = await getNotifications(client.id);
             setNotifications(userNotifications);
+            console.log('Fetched notifications:', userNotifications);
             setUnreadCount(userNotifications.filter(n => !n.read).length);
             console.log('Fetched notifications:', userNotifications);
         }
@@ -104,6 +105,16 @@ const NotificationDropdown = () => {
         }
     };
 
+    // problem
+    const problem = (notification: DirectusNotification) => {
+        console.log('Problem with notification:', notification);
+        console.log('Notification owner:', notification.request?.owner);
+        console.log(String(notification.request?.owner).trim() === String(client?.id||'').trim());
+        console.log(String(notification.request?.owner).trim() === String(client?.id||'').trim());
+
+        return true;
+    };
+
     // Handle click on notification
     const handleNotificationClick = (id: string) => {
         markAsRead(id);
@@ -138,8 +149,16 @@ const NotificationDropdown = () => {
             {/* Notification dropdown */}
             {isOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-10 max-h-96 overflow-y-auto">
-                    <div className="px-4 py-2 border-b border-gray-200">
-                        <h3 className="text-sm font-medium text-gray-700">Notifications</h3>
+                    <div className="px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                        <h3 className="text-base font-semibold text-gray-800">Notifications</h3>
+                        <button
+                            onClick={() => {
+                                notifications.forEach((notification) => markAsRead(notification.id));
+                            }}
+                            className="text-xs text-green-600 hover:text-green-800 transition-colors font-medium px-2 py-1 rounded hover:bg-green-50"
+                        >
+                            Mark all as read
+                        </button>
                     </div>
 
                     {notifications.length === 0 ? (
@@ -150,8 +169,11 @@ const NotificationDropdown = () => {
                         <>
                             <div className="divide-y divide-gray-200">
                                 {notifications.map((notification) => (
+                                    
                                     <Link
-                                        href={notification.conversation !== null ? '/conversations' : `/users/${client?.id}`}
+                                        href={notification.conversation !== null
+                                            ? `/conversations?selectedConversationId=${notification.conversation?.id}`
+                                            : `/users/${client?.id}?requestId=${notification.request?.id}&role=${(String(notification.request?.owner).trim() === String(client?.id||'').trim()) ? 'owner': 'renter'}`}//
                                         key={notification.id}
                                         onClick={() => handleNotificationClick(notification.id)}
                                         className={`block w-full text-left px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out ${!notification.read ? 'bg-blue-50' : ''}`}
@@ -173,7 +195,7 @@ const NotificationDropdown = () => {
                                     onClick={() => {
                                         notifications.forEach((notification) => markAsRead(notification.id));
                                     }}
-                                    className="block w-full text-center text-xs text-blue-600 hover:text-blue-800 py-2"
+                                    className="text-xs text-green-600 hover:text-green-800 transition-colors font-medium px-2 py-1 rounded hover:bg-green-50"
                                 >
                                     Mark all as read
                                 </button>

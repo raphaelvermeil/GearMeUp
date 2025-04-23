@@ -272,10 +272,10 @@ export const getGearListings = async ({
           sort === "date_created_desc"
             ? "-date_created"
             : sort === "date_created_asc"
-            ? "date_created"
-            : sort === "price_asc"
-            ? "price"
-            : "-price",
+              ? "date_created"
+              : sort === "price_asc"
+                ? "price"
+                : "-price",
       })
     )) as DirectusGearListing[];
 
@@ -774,10 +774,19 @@ export const getNotifications = async (clientID: string) => {
         filter: {
           client: clientID,
         },
-        fields: ["*", "client.*", "conversation.*", "request.*"],
+        fields: ["*", "client.*", "conversation.*", "request.*",
+        ],
         sort: ["-date_created"],
       })
     )) as DirectusNotification[];
+    const transformedResponse = response.map((notification) => {
+      return {
+        ...notification,
+        conversation: notification.conversation !== null ? getConversation(String(notification.conversation))  : null,
+        request: notification.request !== null ? getRentalRequest(String(notification.request)) : null,
+      };
+    });
+    console.log("Transformed notifications:", transformedResponse);
     console.log("Notifications response:", response);
     return response;
   } catch (error) {

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import { getOrCreateClient, DirectusUser, DirectusClientUser, DirectusRentalRequest, directus } from '@/lib/directus'
 import { readItem } from '@directus/sdk'
 import { useGearListings } from '@/hooks/useGearListings'
@@ -83,8 +83,23 @@ function ReviewsSection({ clientId }: { clientId: string }) {
 
 // Rental Requests component that only shows for the logged-in user's own profile
 function RentalRequestsSection({ clientId }: { clientId: string }) {
-  const [role, setRole] = useState<'owner' | 'renter'>('renter')
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const requestIdParam = searchParams.get('requestId')?.trim() || null;
+  const roleParam = searchParams.get('role')||'';
+
+  function readParams(){
+    console.log(`requestIdParam: ${requestIdParam}`)
+    console.log(`roleParam: ${roleParam}`)
+  }
+  readParams();
+
+  const [role, setRole] = useState<'owner' | 'renter'>(roleParam === 'owner' ? 'owner' : 'renter');
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null)
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(requestIdParam);
+
+  const requestRef = useRef<HTMLDivElement>(null);
+
   const [reviewData, setReviewData] = useState<{
     rating: number;
     comment: string;
@@ -127,6 +142,20 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
     }
   };
 
+  // Use this effect to scroll to the highlighted request
+  useEffect(() => {
+    if (highlightedRequestId && requestRef.current) {
+      requestRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Remove the highlight after a few seconds
+      const timer = setTimeout(() => {
+        setHighlightedRequestId(null);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedRequestId, requests]);
+
   const handleReviewSubmit = async (request: DirectusRentalRequest) => {
     if (!reviewData.comment) {
       alert('Please enter a comment for your review.');
@@ -165,8 +194,10 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
     return <div className="text-red-500">Error loading rental requests: {requestsError.message}</div>
   }
 
+
+
   return (
-    <div className="mt-8">
+    <div className="mt-8" ref={requestRef}>
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
@@ -200,7 +231,8 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
               {requests.map((request: DirectusRentalRequest) => (
                 <div
                   key={request.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                  className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer ${highlightedRequestId === request.id ? 'ring-2 ring-green-500 bg-green-50' : ''
+                    }`}
                   onClick={() => setExpandedRequestId(expandedRequestId === request.id ? null : request.id)}
                 >
                   <div className="flex justify-between items-start">
@@ -407,6 +439,8 @@ export default function UserProfilePage() {
   const [client, setClient] = useState<DirectusClientUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const searchParams = useSearchParams();
+  const requestIdParam = searchParams.get('requestId');
 
   // Fetch user's gear listings
   const {
@@ -445,6 +479,20 @@ export default function UserProfilePage() {
       fetchClient()
     }
   }, [id])
+
+  useEffect(() => {
+    // If there's a requestId in the URL, scroll to the rental requests section
+    if (requestIdParam) {
+      const timer = setTimeout(() => {
+        const requestSection = document.getElementById('rental-requests-section');
+        if (requestSection) {
+          requestSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500); // Delay slightly to ensure DOM is ready
+
+      return () => clearTimeout(timer);
+    }
+  }, [requestIdParam]);
 
   if (loading || listingsLoading) {
     return (
@@ -523,7 +571,9 @@ export default function UserProfilePage() {
 
         {/* Rental Requests Section - Only show for own profile */}
         {isOwnProfile && client?.id && (
-          <RentalRequestsSection clientId={client.id} />
+          <div id="rental-requests-section">
+            <RentalRequestsSection clientId={client.id} />
+          </div>
         )}
       </div>
     </div>
