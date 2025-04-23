@@ -30,7 +30,8 @@ const sortOptions: { value: SortOption; label: string }[] = [
 ]
 
 export default function GearPage() {
-  // Add a new state for the search input value
+  // Add radius state
+  const [maxRadius, setMaxRadius] = useState<number | undefined>(undefined);
   const [searchInput, setSearchInput] = useState('')
 
   const [filters, setFilters] = useState({
@@ -48,6 +49,7 @@ export default function GearPage() {
     filters,
     page: currentPage,
     sort,
+    maxRadius,
   })
 
   const handleFilterChange = (key: string, value: string | number) => {
@@ -173,7 +175,7 @@ export default function GearPage() {
         {/* Filters and Sort */}
         <div className="mb-12 bg-gray-50 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter & Sort</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
             <select
               className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
               value={filters.category || ''}
@@ -212,6 +214,17 @@ export default function GearPage() {
               onChange={(e) => handleFilterChange('maxPrice', e.target.value ? Number(e.target.value) : '')}
             />
 
+            {/* Add radius filter */}
+            <input
+              type="number"
+              placeholder="Max Distance (km)"
+              className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+              value={maxRadius || ''}
+              onChange={(e) => setMaxRadius(e.target.value ? Number(e.target.value) : undefined)}
+              min="0"
+              step="1"
+            />
+
             <select
               className="text-black block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
               value={sort}
@@ -248,27 +261,28 @@ export default function GearPage() {
                   </div>
                 ) : (
                   <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-500">No image available</span>
+                    <span className="text-gray-400">No image available</span>
                   </div>
                 )}
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h2 className="text-xl font-bold text-white mb-2">{listing.title}</h2>
-                  <p className="text-gray-200 mb-4 line-clamp-2">{listing.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-white">${listing.price}</span>
-                    <span className="text-sm text-gray-200 bg-gray-900/50 px-3 py-1 rounded-full">
-                      {listing.condition}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-sm text-gray-300">{listing.location}</div>
+                <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                  <h3 className="text-lg font-semibold">{listing.title}</h3>
+                  <p className="text-sm opacity-90">${listing.price}/day</p>
+                  {/* Display distance if available */}
+                  {listing.distance !== undefined && (
+                    <p className="text-sm mt-1 opacity-75">
+                      {listing.distance < 1
+                        ? `${Math.round(listing.distance * 1000)}m away`
+                        : `${listing.distance.toFixed(1)}km away`}
+                    </p>
+                  )}
                 </div>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-gray-50 rounded-xl">
-            <h3 className="text-xl font-semibold text-gray-900">No gear listings found</h3>
-            <p className="text-gray-500 mt-2">Try adjusting your filters</p>
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-900">No listings found</h3>
+            <p className="mt-1 text-sm text-gray-500">Try adjusting your filters or search terms</p>
           </div>
         )}
 

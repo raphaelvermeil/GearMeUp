@@ -47,15 +47,27 @@ export interface DirectusClientUser {
   last_name: string;
 }
 
+interface GeoJSONPoint {
+  type: "Point";
+  coordinates: [number, number]; // [longitude, latitude]
+}
+
+interface GeoJSONPolygon {
+  type: "Polygon";
+  coordinates: [number, number][][]; // Array of arrays of [longitude, latitude] pairs
+}
+
 export interface DirectusGearListing {
   id: string;
   title: string;
   description: string;
   price: number;
   condition: string;
-  location: string;
   category: string;
+  polygon: GeoJSONPolygon;
   owner: DirectusClientUser;
+  distance?: number; // Optional distance field for sorted results
+  date_created: string;
   gear_images: Array<{
     id: string;
     gear_listings_id: string;
@@ -157,8 +169,6 @@ export const register = async (
 ) => {
   try {
     // Geocode the address first
-    const location = await geocodeAddress(address);
-    const locationString = `${location.latitude},${location.longitude}`;
 
     // Create the user
     const userResponse = await directus.request(
@@ -168,8 +178,7 @@ export const register = async (
         first_name: firstName,
         last_name: lastName,
         role: "5886bdc4-8845-49f5-9db7-9073390e1e77",
-        address,
-        location: locationString,
+        location: address,
       })
     );
 
@@ -221,12 +230,63 @@ export async function getCurrentUser(): Promise<DirectusUser> {
   }
 }
 
-// Gear listing functions
+// Add this helper function to calculate the center point of a polygon
+function calculatePolygonCenter(
+  polygon: GeoJSONPolygon | null
+): { lat: number; lng: number } | null {
+  if (
+    !polygon ||
+    !polygon.coordinates ||
+    !polygon.coordinates[0] ||
+    polygon.coordinates[0].length === 0
+  ) {
+    console.warn("Invalid polygon data:", polygon);
+    return null;
+  }
+
+  const coordinates = polygon.coordinates[0]; // Get the outer ring
+  let sumLat = 0;
+  let sumLng = 0;
+
+  // Skip the last coordinate since it's the same as the first in a closed polygon
+  for (let i = 0; i < coordinates.length - 1; i++) {
+    sumLng += coordinates[i][0]; // longitude
+    sumLat += coordinates[i][1]; // latitude
+  }
+
+  return {
+    lat: sumLat / (coordinates.length - 1),
+    lng: sumLng / (coordinates.length - 1),
+  };
+}
+
+// Add this helper function to calculate distance between two points
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in kilometers
+}
+
+// Modify the getGearListings function
 export const getGearListings = async ({
   filters,
   page = 1,
   limit = 9,
   sort = "date_created_desc",
+  maxRadius, // in kilometers
 }: {
   filters?: {
     category?: string;
@@ -239,6 +299,7 @@ export const getGearListings = async ({
   page?: number;
   limit?: number;
   sort?: string;
+  maxRadius?: number;
 } = {}) => {
   try {
     const filter: any = {};
@@ -257,7 +318,7 @@ export const getGearListings = async ({
       ];
     }
 
-    const response = (await directus.request(
+    let response = (await directus.request(
       readItems("gear_listings", {
         fields: [
           "*",
@@ -268,16 +329,135 @@ export const getGearListings = async ({
         filter,
         page,
         limit,
-        sort:
-          sort === "date_created_desc"
-            ? "-date_created"
-            : sort === "date_created_asc"
-            ? "date_created"
-            : sort === "price_asc"
-            ? "price"
-            : "-price",
       })
     )) as DirectusGearListing[];
+
+    console.log("Initial listings count:", response.length);
+
+    // Try to get current user's location for distance-based sorting
+    let userLocation = null;
+    try {
+      const currentUser = await directus.request(readMe());
+      console.log("Current user:", currentUser);
+
+      if (currentUser?.location) {
+        console.log("User's location string:", currentUser.location);
+        userLocation = await geocodeAddress(currentUser.location);
+        console.log("Geocoded user location:", userLocation);
+
+        // Add distance to each listing
+        response = await Promise.all(
+          response.map(async (listing) => {
+            console.log("Processing listing:", listing.id);
+            console.log("Listing polygon:", listing.polygon);
+
+            const center = calculatePolygonCenter(listing.polygon);
+            console.log("Listing center:", center);
+
+            let distance: number | undefined = undefined;
+            if (center) {
+              distance = calculateDistance(
+                userLocation!.latitude,
+                userLocation!.longitude,
+                center.lat,
+                center.lng
+              );
+              console.log("Calculated distance:", distance, "km");
+            } else {
+              console.warn(
+                `Could not calculate distance for listing ${listing.id} due to invalid polygon data`
+              );
+            }
+
+            return {
+              ...listing,
+              distance,
+            };
+          })
+        );
+
+        // Filter by radius if specified
+        if (maxRadius) {
+          console.log("Filtering by max radius:", maxRadius, "km");
+          const beforeCount = response.length;
+          response = response.filter((listing) => {
+            // Keep listings with valid distances that are within radius
+            // Put listings with invalid distances at the end
+            if (listing.distance === undefined) return true;
+            return listing.distance <= maxRadius;
+          });
+          console.log(
+            "Filtered out",
+            beforeCount - response.length,
+            "listings"
+          );
+        }
+
+        // Sort by distance, putting listings with no distance at the end
+        console.log("Sorting by distance");
+        response = response.sort((a, b) => {
+          if (a.distance === undefined && b.distance === undefined) return 0;
+          if (a.distance === undefined) return 1;
+          if (b.distance === undefined) return -1;
+          return a.distance - b.distance;
+        });
+      } else {
+        console.log("No user location available, using default sort");
+        // If no user location, apply the requested sort
+        response = response.sort((a, b) => {
+          switch (sort) {
+            case "date_created_desc":
+              return (
+                new Date(b.date_created).getTime() -
+                new Date(a.date_created).getTime()
+              );
+            case "date_created_asc":
+              return (
+                new Date(a.date_created).getTime() -
+                new Date(b.date_created).getTime()
+              );
+            case "price_asc":
+              return a.price - b.price;
+            case "price_desc":
+              return b.price - a.price;
+            default:
+              return 0;
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error in distance calculation:", error);
+      // Apply the requested sort if distance sorting fails
+      response = response.sort((a, b) => {
+        switch (sort) {
+          case "date_created_desc":
+            return (
+              new Date(b.date_created).getTime() -
+              new Date(a.date_created).getTime()
+            );
+          case "date_created_asc":
+            return (
+              new Date(a.date_created).getTime() -
+              new Date(b.date_created).getTime()
+            );
+          case "price_asc":
+            return a.price - b.price;
+          case "price_desc":
+            return b.price - a.price;
+          default:
+            return 0;
+        }
+      });
+    }
+
+    console.log(
+      "Final listings with distances:",
+      response.map((l) => ({
+        id: l.id,
+        title: l.title,
+        distance: l.distance,
+      }))
+    );
 
     return response;
   } catch (error) {
@@ -325,7 +505,6 @@ export const createGearListing = async (data: {
   category: string;
   price: number;
   condition: string;
-  location: string;
   ownerID: string;
   images: File[];
 }) => {
@@ -335,6 +514,26 @@ export const createGearListing = async (data: {
     if (!token) {
       throw new Error("Not authenticated");
     }
+
+    // Get the current user to access their address
+    const currentUser = await directus.request(readMe());
+    if (!currentUser?.location) {
+      throw new Error("User address not found");
+    }
+
+    // Use the user's address to generate coordinates (this point won't be stored)
+    const locationData = await geocodeAddress(currentUser.location);
+
+    console.log("currentUser location", currentUser.location);
+    console.log("locationData", locationData);
+
+    // Generate random irregular polygon that contains the point
+    const polygon: GeoJSONPolygon = generateRandomPolygonAroundPoint(
+      locationData.latitude,
+      locationData.longitude
+    );
+
+    console.log("polygon", polygon);
 
     // First upload the images
     const uploadedImages = await Promise.all(
@@ -359,7 +558,7 @@ export const createGearListing = async (data: {
       })
     );
 
-    // Then create the gear listing with the uploaded image IDs
+    // Then create the gear listing with the uploaded image IDs and polygon
     const response = await directus.request(
       createItem("gear_listings", {
         title: data.title,
@@ -367,8 +566,8 @@ export const createGearListing = async (data: {
         category: data.category,
         price: data.price,
         condition: data.condition,
-        location: data.location,
-        owner: data.ownerID, // Use the client ID directly
+        polygon: polygon,
+        owner: data.ownerID,
         gear_images: uploadedImages.map((fileId) => ({
           directus_files_id: fileId,
         })),
@@ -386,6 +585,45 @@ export const createGearListing = async (data: {
     throw error;
   }
 };
+
+// Helper function to generate a random irregular polygon containing a point
+function generateRandomPolygonAroundPoint(
+  centerLat: number,
+  centerLng: number
+): GeoJSONPolygon {
+  const numPoints = Math.floor(Math.random() * 3) + 5; // Random number of points (5-7)
+  const minRadius = 0.5; // Minimum radius in km
+  const maxRadius = 2; // Maximum radius in km
+  const points: [number, number][] = [];
+
+  for (let i = 0; i < numPoints; i++) {
+    const angle = (i * 2 * Math.PI) / numPoints;
+
+    // Generate random radius between min and max
+    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+
+    // Add some randomness to the angle to make the polygon irregular
+    const randomAngleOffset = (Math.random() - 0.5) * (Math.PI / 6); // ±15 degrees
+    const finalAngle = angle + randomAngleOffset;
+
+    // Convert radius from km to degrees (approximate)
+    const latRadius = radius / 111.32; // 1 degree of latitude is approximately 111.32 km
+    const lngRadius = radius / (111.32 * Math.cos(centerLat * (Math.PI / 180))); // Adjust for latitude
+
+    const lat = centerLat + latRadius * Math.sin(finalAngle);
+    const lng = centerLng + lngRadius * Math.cos(finalAngle);
+
+    points.push([lng, lat]); // GeoJSON uses [longitude, latitude] order
+  }
+
+  // Close the polygon by adding the first point again
+  points.push(points[0]);
+
+  return {
+    type: "Polygon",
+    coordinates: [points],
+  };
+}
 
 // Rental request functions
 export const createRentalRequest = async (requestData: {
