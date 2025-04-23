@@ -293,7 +293,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
                           <h4 className="text-sm font-medium text-gray-900">Gear Details</h4>
                           <p className="text-sm text-gray-500">Category: {request.gear_listing?.category}</p>
                           <p className="text-sm text-gray-500">Condition: {request.gear_listing?.condition}</p>
-                          <p className="text-sm text-gray-500">Location: {request.gear_listing?.location}</p>
+                          {/* <p className="text-sm text-gray-500">Location: {request.gear_listing?.location}</p> */}
                         </div>
                         <div>
                           <h4 className="text-sm font-medium text-gray-900">Rental Details</h4>

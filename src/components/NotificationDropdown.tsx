@@ -106,13 +106,13 @@ const NotificationDropdown = () => {
     };
 
     // problem
-    const problem = (notification: DirectusNotification) => {
+    const checkRole = (notification: DirectusNotification) => {
         console.log('Problem with notification:', notification);
         console.log('Notification owner:', notification.request?.owner);
-        console.log(String(notification.request?.owner).trim() === String(client?.id||'').trim());
-        console.log(String(notification.request?.owner).trim() === String(client?.id||'').trim());
+        const isOwner=String(notification.request?.owner).trim() === String(client?.id||'').trim();
+        console.log(isOwner);
 
-        return true;
+        return isOwner;
     };
 
     // Handle click on notification
@@ -173,7 +173,7 @@ const NotificationDropdown = () => {
                                     <Link
                                         href={notification.conversation !== null
                                             ? `/conversations?selectedConversationId=${notification.conversation?.id}`
-                                            : `/users/${client?.id}?requestId=${notification.request?.id}&role=${(String(notification.request?.owner).trim() === String(client?.id||'').trim()) ? 'owner': 'renter'}`}//
+                                            : `/users/${client?.id}?requestId=${notification.request?.id}&role=${checkRole(notification) ? 'owner': 'renter'}`}//
                                         key={notification.id}
                                         onClick={() => handleNotificationClick(notification.id)}
                                         className={`block w-full text-left px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out ${!notification.read ? 'bg-blue-50' : ''}`}
