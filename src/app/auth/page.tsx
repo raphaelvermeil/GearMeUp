@@ -24,7 +24,7 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     console.log("Auth Page: Form submitted!")
-    console.log("Auth Page: Form values:", { email, password, isLogin })
+    console.log("Auth Page: Form values:", { email, password, isLogin, firstName, lastName, address })
     setError('')
     setLoading(true)
 

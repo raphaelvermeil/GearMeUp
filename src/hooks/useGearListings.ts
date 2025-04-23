@@ -15,11 +15,12 @@ interface UseGearListingsOptions {
     minPrice?: number;
     maxPrice?: number;
     owner?: string;
-    search?: string; // Added search parameter
+    search?: string;
   };
   page?: number;
   itemsPerPage?: number;
   sort?: SortOption;
+  maxRadius?: number;
 }
 
 export function useGearListings({
@@ -27,6 +28,7 @@ export function useGearListings({
   page = 1,
   itemsPerPage = 9,
   sort = "date_created_desc",
+  maxRadius,
 }: UseGearListingsOptions = {}) {
   const [listings, setListings] = useState<DirectusGearListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +45,7 @@ export function useGearListings({
           page,
           limit: itemsPerPage,
           sort,
+          maxRadius,
         });
 
         // If we have a search term, filter the listings client-side
@@ -68,7 +71,7 @@ export function useGearListings({
     }
 
     fetchListings();
-  }, [filters, page, itemsPerPage, sort]);
+  }, [filters, page, itemsPerPage, sort, maxRadius]);
 
   return {
     listings,
