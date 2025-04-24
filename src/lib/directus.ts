@@ -1013,7 +1013,7 @@ export const findConversation = async (
     throw error;
   }
 };
-export const getNotifications = async (clientID: string) => {
+/*export const getNotifications = async (clientID: string) => {
   try {
     const response = (await directus.request(
       readItems("notifications", {
@@ -1025,19 +1025,126 @@ export const getNotifications = async (clientID: string) => {
         sort: ["-date_created"],
       })
     )) as DirectusNotification[];
-    const transformedResponse = response.map((notification) => {
+    const transformedResponse = await Promise.all(response.map(async (notification) => {
+      let conversationData:DirectusConversation|null = null;
+      let requestData:DirectusRentalRequest|null = null;
+      
+      try {
+        if (notification.conversation !== null) {
+          conversationData = await getConversation(String(notification.conversation));
+        }
+      } catch (error) {
+        console.log(`Could not fetch conversation data for ID: ${notification.conversation}`, error);
+      }
+      
+      try {
+        if (notification.request !== null) {
+          requestData = await getRentalRequest(String(notification.request));
+        }
+      } catch (error) {
+        console.log(`Could not fetch request data for ID: ${notification.request}`, error);
+      }
+      
       return {
         ...notification,
-        conversation: notification.conversation !== null ? getConversation(String(notification.conversation))  : null,
-        request: notification.request !== null ? getRentalRequest(String(notification.request)) : null,
+        conversation: conversationData,
+        request: requestData,
       };
-    });
+    }));
     console.log("Transformed notifications:", transformedResponse);
     console.log("Notifications response:", response);
     return response;
   } catch (error) {
     console.error("Error getting notif (directus.ts):", error);
     throw error;
+  }
+};*/
+export const getNotifications = async (clientID: string) => {
+  try {
+    // First get the basic notifications
+    const notifications = (await directus.request(
+      readItems("notifications", {
+        filter: {
+          client: clientID,
+        },
+        fields: ["*", "client.*"],
+        sort: ["-date_created"],
+      })
+    )) as DirectusNotification[];
+    
+    // Then batch fetch the related conversations and requests with permissions issue tracking
+    const relationshipPromises = {
+      conversations: [] as Promise<any>[],
+      requests: [] as Promise<any>[],
+    };
+    
+    const relationshipResults = {
+      conversations: {} as Record<string, any>,
+      requests: {} as Record<string, any>,
+    };
+    
+    // Collect conversation and request IDs and prepare batch fetches
+    for (const notification of notifications) {
+      if (notification.conversation) {
+        const id = String(notification.conversation);
+        relationshipPromises.conversations.push(
+          directus.request(
+            readItem("conversations", id, {
+              fields: ["*", "user_1.*", "user_2.*", "user_1.user.*", "user_2.user.*", "gear_listing.*"],
+            })
+          )
+          .then(data => {
+            relationshipResults.conversations[id] = data;
+          })
+          .catch(err => {
+            console.error(`Failed to fetch conversation ${id}:`, err);
+            relationshipResults.conversations[id] = { id, error: true };
+          })
+        );
+      }
+      
+      if (notification.request) {
+        const id = String(notification.request);
+        relationshipPromises.requests.push(
+          directus.request(
+            readItem("rental_requests", id, {
+              fields: ["*", "gear_listing.*", "renter.*", "owner.*"],
+            })
+          )
+          .then(data => {
+            relationshipResults.requests[id] = data;
+          })
+          .catch(err => {
+            console.error(`Failed to fetch request ${id}:`, err);
+            relationshipResults.requests[id] = { id, error: true };
+          })
+        );
+      }
+    }
+    
+    // Wait for all promises to settle (regardless of success/failure)
+    await Promise.allSettled([
+      ...relationshipPromises.conversations,
+      ...relationshipPromises.requests
+    ]);
+    
+    // Merge the results
+    const enrichedNotifications = notifications.map(notification => {
+      const conversationId = notification.conversation ? String(notification.conversation) : null;
+      const requestId = notification.request ? String(notification.request) : null;
+      
+      return {
+        ...notification,
+        conversation: conversationId ? relationshipResults.conversations[conversationId] || null : null,
+        request: requestId ? relationshipResults.requests[requestId] || null : null,
+      };
+    });
+    
+    console.log("Enriched notifications:", enrichedNotifications);
+    return enrichedNotifications;
+  } catch (error) {
+    console.error("Error in notification processing:", error);
+    return [];
   }
 };
 export const markNotificationAsRead = async (

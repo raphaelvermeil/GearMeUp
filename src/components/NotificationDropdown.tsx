@@ -109,8 +109,8 @@ const NotificationDropdown = () => {
     const checkRole = (notification: DirectusNotification) => {
         console.log('Problem with notification:', notification);
         console.log('Notification owner:', notification.request?.owner);
-        const isOwner=String(notification.request?.owner).trim() === String(client?.id||'').trim();
-        console.log(isOwner);
+        const isOwner=String(notification.request.owner.id).trim() === String(client?.id||'').trim();
+        //console.log(isOwner);
 
         return isOwner;
     };
