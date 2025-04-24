@@ -54,10 +54,7 @@ export default function Conversations() {
     const selectedConversationIdParam = searchParams.get("selectedConversationId");
     useEffect(() => {
         if (selectedConversationIdParam && conversations.length > 0) {
-            // Try adding console.log with more detailed type information
-            console.log("Selected ID (type):", selectedConversationIdParam, typeof selectedConversationIdParam);
-            console.log("Conversation ID (type):", conversations[1].id, typeof conversations[1].id);
-
+            
             const targetConversation = conversations.find(conv => String(conv.id) === selectedConversationIdParam);
             console.log("Target Conversation:", targetConversation);
             if (targetConversation) {

@@ -150,7 +150,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
       // Remove the highlight after a few seconds
       const timer = setTimeout(() => {
         setHighlightedRequestId(null);
-      }, 5000);
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
@@ -231,8 +231,7 @@ function RentalRequestsSection({ clientId }: { clientId: string }) {
               {requests.map((request: DirectusRentalRequest) => (
                 <div
                   key={request.id}
-                  className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer ${highlightedRequestId === request.id ? 'ring-2 ring-green-500 bg-green-50' : ''
-                    }`}
+                  className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer ${String(highlightedRequestId) === String(request.id) ? 'ring-2 ring-green-500 bg-green-50' : ''}`}
                   onClick={() => setExpandedRequestId(expandedRequestId === request.id ? null : request.id)}
                 >
                   <div className="flex justify-between items-start">
