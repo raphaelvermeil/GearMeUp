@@ -1013,52 +1013,7 @@ export const findConversation = async (
     throw error;
   }
 };
-/*export const getNotifications = async (clientID: string) => {
-  try {
-    const response = (await directus.request(
-      readItems("notifications", {
-        filter: {
-          client: clientID,
-        },
-        fields: ["*", "client.*", "conversation.*", "request.*",
-        ],
-        sort: ["-date_created"],
-      })
-    )) as DirectusNotification[];
-    const transformedResponse = await Promise.all(response.map(async (notification) => {
-      let conversationData:DirectusConversation|null = null;
-      let requestData:DirectusRentalRequest|null = null;
-      
-      try {
-        if (notification.conversation !== null) {
-          conversationData = await getConversation(String(notification.conversation));
-        }
-      } catch (error) {
-        console.log(`Could not fetch conversation data for ID: ${notification.conversation}`, error);
-      }
-      
-      try {
-        if (notification.request !== null) {
-          requestData = await getRentalRequest(String(notification.request));
-        }
-      } catch (error) {
-        console.log(`Could not fetch request data for ID: ${notification.request}`, error);
-      }
-      
-      return {
-        ...notification,
-        conversation: conversationData,
-        request: requestData,
-      };
-    }));
-    console.log("Transformed notifications:", transformedResponse);
-    console.log("Notifications response:", response);
-    return response;
-  } catch (error) {
-    console.error("Error getting notif (directus.ts):", error);
-    throw error;
-  }
-};*/
+
 export const getNotifications = async (clientID: string) => {
   try {
     // First get the basic notifications
@@ -1140,13 +1095,14 @@ export const getNotifications = async (clientID: string) => {
       };
     });
     
-    console.log("Enriched notifications:", enrichedNotifications);
+    //console.log("Enriched notifications:", enrichedNotifications);
     return enrichedNotifications;
   } catch (error) {
     console.error("Error in notification processing:", error);
     return [];
   }
 };
+
 export const markNotificationAsRead = async (
   notificationID: string,
   isRead: boolean = true

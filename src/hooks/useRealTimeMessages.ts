@@ -17,22 +17,24 @@ export function useRealTimeMessages(conversationId: string) {
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sentMessagesRef = useRef<Set<string>>(new Set());
+  const connectFnRef = useRef<(() => Promise<void>) | null>(null);
 
   // Convert Ably message to Directus format
-  const convertAblyToDirectusMessage = (
-    ablyMessage: AblyMessage
-  ): DirectusMessage => ({
-    id: ablyMessage.id,
-    message: ablyMessage.message,
-    date_created: ablyMessage.timestamp,
-    sender: {
-      id: ablyMessage.senderId,
-      user: { id: ablyMessage.senderId },
-    } as any,
-    conversation: {
-      id: ablyMessage.conversationId,
-    } as any,
-  });
+  const convertAblyToDirectusMessage = useCallback(
+    (ablyMessage: AblyMessage): DirectusMessage => ({
+      id: ablyMessage.id,
+      message: ablyMessage.message,
+      date_created: ablyMessage.timestamp,
+      sender: {
+        id: ablyMessage.senderId,
+        user: { id: ablyMessage.senderId },
+      } as any,
+      conversation: {
+        id: ablyMessage.conversationId,
+      } as any,
+    }),
+    []
+  );
 
   const cleanup = useCallback(() => {
     if (unsubscribeRef.current) {
@@ -54,8 +56,7 @@ export function useRealTimeMessages(conversationId: string) {
     setIsConnected(false);
     if (reconnectAttempts < maxReconnectAttempts) {
       console.log(
-        `Attempting to reconnect (${
-          reconnectAttempts + 1
+        `Attempting to reconnect (${reconnectAttempts + 1
         }/${maxReconnectAttempts})...`
       );
       setReconnectAttempts((prev) => prev + 1);
@@ -63,12 +64,14 @@ export function useRealTimeMessages(conversationId: string) {
       cleanup();
 
       reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
+        if (connectFnRef.current) {
+          connectFnRef.current();
+        }
       }, Math.min(1000 * Math.pow(2, reconnectAttempts), 10000)); // Exponential backoff
     } else {
       setError(new Error("Failed to connect after maximum attempts"));
     }
-  }, [reconnectAttempts, maxReconnectAttempts, cleanup]);
+  }, [reconnectAttempts, maxReconnectAttempts, cleanup,]);
 
   const connect = useCallback(async () => {
     if (!conversationId) return;
@@ -140,13 +143,18 @@ export function useRealTimeMessages(conversationId: string) {
       console.error("Error subscribing to messages:", err);
       handleReconnect();
     }
-  }, [conversationId, handleReconnect, cleanup]);
+  }, [conversationId, cleanup, handleReconnect, convertAblyToDirectusMessage]);
 
   // Initialize connection
   useEffect(() => {
     connect();
     return cleanup;
   }, [conversationId, connect, cleanup]);
+
+  // Store the connect function in the ref after it's defined
+  useEffect(() => {
+    connectFnRef.current = connect;
+  }, [connect]);
 
   // Reset messages when conversation changes
   useEffect(() => {
